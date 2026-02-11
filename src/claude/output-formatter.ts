@@ -1,4 +1,10 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+} from "discord.js";
 
 const MAX_DISCORD_LENGTH = 1900; // leave room for formatting
 
@@ -132,22 +138,129 @@ export function createToolApprovalEmbed(
   return { embed, row };
 }
 
+export interface AskQuestionData {
+  question: string;
+  header: string;
+  options: { label: string; description: string }[];
+  multiSelect: boolean;
+}
+
+export function createAskUserQuestionEmbed(
+  questionData: AskQuestionData,
+  requestId: string,
+  questionIndex: number,
+  totalQuestions: number,
+): { embed: EmbedBuilder; components: ActionRowBuilder<any>[] } {
+  const title =
+    totalQuestions > 1
+      ? `❓ ${questionData.header} (${questionIndex + 1}/${totalQuestions})`
+      : `❓ ${questionData.header}`;
+
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(questionData.question)
+    .setColor(0x7c3aed)
+    .setTimestamp();
+
+  // Add option descriptions as embed fields
+  for (const opt of questionData.options) {
+    embed.addFields({
+      name: opt.label,
+      value: opt.description || "\u200b",
+      inline: false,
+    });
+  }
+
+  const components: ActionRowBuilder<any>[] = [];
+
+  if (questionData.multiSelect) {
+    // Use StringSelectMenu for multi-select
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`ask-select:${requestId}`)
+      .setPlaceholder("Select options...")
+      .setMinValues(1)
+      .setMaxValues(questionData.options.length)
+      .addOptions(
+        questionData.options.map((opt, i) => ({
+          label: opt.label.slice(0, 100),
+          value: String(i),
+          ...(opt.description
+            ? { description: opt.description.slice(0, 100) }
+            : {}),
+        })),
+      );
+
+    components.push(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu),
+    );
+
+    // Custom input button in separate row
+    components.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ask-other:${requestId}`)
+          .setLabel("직접 입력")
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji("✏️"),
+      ),
+    );
+  } else {
+    // Use buttons for single select
+    const buttons: ButtonBuilder[] = questionData.options.map((opt, i) =>
+      new ButtonBuilder()
+        .setCustomId(`ask-opt:${requestId}:${i}`)
+        .setLabel(opt.label.slice(0, 80))
+        .setStyle(i === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    );
+
+    // Custom input button
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(`ask-other:${requestId}`)
+        .setLabel("직접 입력")
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji("✏️"),
+    );
+
+    // Discord max 5 buttons per row
+    for (let i = 0; i < buttons.length; i += 5) {
+      components.push(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          ...buttons.slice(i, i + 5),
+        ),
+      );
+    }
+  }
+
+  return { embed, components };
+}
+
 export function createResultEmbed(
   result: string,
   costUsd: number,
   durationMs: number,
+  showCost: boolean = true,
 ): EmbedBuilder {
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle("✅ Task Complete")
     .setDescription(result.slice(0, 4000))
-    .setColor(0x00ff00)
-    .addFields(
-      { name: "Cost", value: `$${costUsd.toFixed(4)}`, inline: true },
-      {
-        name: "Duration",
-        value: `${(durationMs / 1000).toFixed(1)}s`,
-        inline: true,
-      },
-    )
+    .setColor(0x00ff00);
+
+  if (showCost) {
+    embed.addFields({
+      name: "Cost (est. API usage)",
+      value: `$${costUsd.toFixed(4)}`,
+      inline: true,
+    });
+  }
+
+  embed
+    .addFields({
+      name: "Duration",
+      value: `${(durationMs / 1000).toFixed(1)}s`,
+      inline: true,
+    })
     .setTimestamp();
+
+  return embed;
 }

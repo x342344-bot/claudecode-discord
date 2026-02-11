@@ -8,11 +8,14 @@ import {
   getSession,
   setAutoApprove,
 } from "../db/database.js";
+import { getConfig } from "../utils/config.js";
 import {
   createToolApprovalEmbed,
+  createAskUserQuestionEmbed,
   createResultEmbed,
   createStopButton,
   splitMessage,
+  type AskQuestionData,
 } from "./output-formatter.js";
 
 interface ActiveSession {
@@ -30,6 +33,18 @@ const pendingApprovals = new Map<
     channelId: string;
   }
 >();
+
+// Pending AskUserQuestion requests: requestId -> resolve function
+const pendingQuestions = new Map<
+  string,
+  {
+    resolve: (answer: string | null) => void;
+    channelId: string;
+  }
+>();
+
+// Pending custom text inputs: channelId -> requestId
+const pendingCustomInputs = new Map<string, { requestId: string }>();
 
 class SessionManager {
   private sessions = new Map<string, ActiveSession>();
@@ -129,6 +144,67 @@ class SessionManager {
               } catch {
                 // ignore
               }
+            }
+
+            // Handle AskUserQuestion with interactive Discord UI
+            if (toolName === "AskUserQuestion") {
+              const questions = (input.questions as AskQuestionData[]) ?? [];
+              if (questions.length === 0) {
+                return { behavior: "allow" as const, updatedInput: input };
+              }
+
+              const answers: Record<string, string> = {};
+
+              for (let qi = 0; qi < questions.length; qi++) {
+                const q = questions[qi];
+                const qRequestId = randomUUID();
+                const { embed, components } = createAskUserQuestionEmbed(
+                  q,
+                  qRequestId,
+                  qi,
+                  questions.length,
+                );
+
+                updateSessionStatus(channelId, "waiting");
+                await channel.send({ embeds: [embed], components });
+
+                const answer = await new Promise<string | null>((resolve) => {
+                  const timeout = setTimeout(() => {
+                    pendingQuestions.delete(qRequestId);
+                    // Clean up custom input if pending
+                    const ci = pendingCustomInputs.get(channelId);
+                    if (ci?.requestId === qRequestId) {
+                      pendingCustomInputs.delete(channelId);
+                    }
+                    resolve(null);
+                  }, 5 * 60 * 1000);
+
+                  pendingQuestions.set(qRequestId, {
+                    resolve: (ans) => {
+                      clearTimeout(timeout);
+                      pendingQuestions.delete(qRequestId);
+                      resolve(ans);
+                    },
+                    channelId,
+                  });
+                });
+
+                if (answer === null) {
+                  updateSessionStatus(channelId, "online");
+                  return {
+                    behavior: "deny" as const,
+                    message: "Question timed out",
+                  };
+                }
+
+                answers[q.header] = answer;
+              }
+
+              updateSessionStatus(channelId, "online");
+              return {
+                behavior: "allow" as const,
+                updatedInput: { ...input, answers },
+              };
             }
 
             // Auto-approve read-only tools
@@ -265,6 +341,7 @@ class SessionManager {
             resultMsg.result ?? "Task completed",
             resultMsg.total_cost_usd ?? 0,
             resultMsg.duration_ms ?? 0,
+            getConfig().SHOW_COST,
           );
           await channel.send({ embeds: [resultEmbed] });
 
@@ -319,6 +396,32 @@ class SessionManager {
     }
 
     return true;
+  }
+
+  resolveQuestion(requestId: string, answer: string): boolean {
+    const pending = pendingQuestions.get(requestId);
+    if (!pending) return false;
+    pending.resolve(answer);
+    return true;
+  }
+
+  enableCustomInput(requestId: string, channelId: string): void {
+    pendingCustomInputs.set(channelId, { requestId });
+  }
+
+  resolveCustomInput(channelId: string, text: string): boolean {
+    const ci = pendingCustomInputs.get(channelId);
+    if (!ci) return false;
+    pendingCustomInputs.delete(channelId);
+
+    const pending = pendingQuestions.get(ci.requestId);
+    if (!pending) return false;
+    pending.resolve(text);
+    return true;
+  }
+
+  hasPendingCustomInput(channelId: string): boolean {
+    return pendingCustomInputs.has(channelId);
   }
 }
 

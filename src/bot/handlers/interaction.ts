@@ -88,6 +88,39 @@ export async function handleButtonInteraction(
     return;
   }
 
+  // Handle AskUserQuestion option selection
+  if (action === "ask-opt") {
+    // requestId format: "uuid:optionIndex"
+    const lastColon = requestId.lastIndexOf(":");
+    const actualRequestId = requestId.slice(0, lastColon);
+    const selectedLabel = interaction.component.label ?? "Unknown";
+
+    const resolved = sessionManager.resolveQuestion(actualRequestId, selectedLabel);
+    if (!resolved) {
+      await interaction.reply({ content: "This question has expired.", ephemeral: true });
+      return;
+    }
+
+    await interaction.update({
+      content: `✅ Selected: **${selectedLabel}**`,
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  // Handle AskUserQuestion custom text input
+  if (action === "ask-other") {
+    sessionManager.enableCustomInput(requestId, interaction.channelId);
+
+    await interaction.update({
+      content: "✏️ 답변을 입력하세요...",
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
   // Handle session delete button
   if (action === "session-delete") {
     const sessionId = requestId;
@@ -168,6 +201,30 @@ export async function handleSelectMenuInteraction(
     await interaction.reply({
       content: "You are not authorized.",
       ephemeral: true,
+    });
+    return;
+  }
+
+  // Handle AskUserQuestion multi-select
+  if (interaction.customId.startsWith("ask-select:")) {
+    const askRequestId = interaction.customId.slice("ask-select:".length);
+    const options = (interaction.component as any).options ?? [];
+    const selectedLabels = interaction.values.map((val: string) => {
+      const opt = options.find((o: any) => o.value === val);
+      return opt?.label ?? val;
+    });
+    const answer = selectedLabels.join(", ");
+
+    const resolved = sessionManager.resolveQuestion(askRequestId, answer);
+    if (!resolved) {
+      await interaction.reply({ content: "This question has expired.", ephemeral: true });
+      return;
+    }
+
+    await interaction.update({
+      content: `✅ Selected: **${answer}**`,
+      embeds: [],
+      components: [],
     });
     return;
   }
