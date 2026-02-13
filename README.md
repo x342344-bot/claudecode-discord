@@ -136,14 +136,35 @@ Attach images, documents, or code files and Claude can read and analyze them.
 
 ## Security
 
-**Self-hosted architecture** — The bot runs entirely on your own PC/server. No external servers involved, and no data leaves your machine except through Discord and the Anthropic API (which uses your own Claude Code login session).
+### Zero External Attack Surface
 
-- `ALLOWED_USER_IDS` whitelist-based authentication
+This bot **does not open any HTTP servers, ports, or API endpoints.** It connects to Discord via an outbound WebSocket — there is no inbound listener, so there is no network path for external attackers to reach this bot.
+
+```
+Typical web server:  External → [Port open, waiting] → Receives requests  (inbound)
+This bot:            Bot → [Connects to Discord] → Receives events         (outbound only)
+```
+
+### Self-Hosted Architecture
+
+The bot runs entirely on your own PC/server. No external servers involved, and no data leaves your machine except through Discord and the Anthropic API (which uses your own Claude Code login session).
+
+### Access Control
+
+- `ALLOWED_USER_IDS` whitelist-based authentication — all messages and commands from unregistered users are ignored
 - Discord servers are private by default (no access without invite link)
 - Per-minute request rate limiting
+
+### Execution Protection
+
+- Tool use default: file modifications, command execution, etc. **require user approval each time** (Discord buttons)
 - Path traversal (`..`) blocked
-- Tool use default: requires user approval each time
 - File attachments: executable files (.exe, .bat, etc.) blocked, 25MB size limit
+
+### Precautions
+
+- The `.env` file contains your bot token — **never share it publicly.** If compromised, immediately Reset Token in Discord Developer Portal
+- `auto-approve` mode is convenient but may allow Claude to perform unintended actions — use only on trusted projects
 
 ## Development
 
