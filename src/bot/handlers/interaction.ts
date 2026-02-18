@@ -10,7 +10,7 @@ import path from "node:path";
 import { isAllowedUser } from "../../security/guard.js";
 import { sessionManager } from "../../claude/session-manager.js";
 import { upsertSession, getProject } from "../../db/database.js";
-import { findSessionDir } from "../commands/sessions.js";
+import { findSessionDir, getLastAssistantMessage } from "../commands/sessions.js";
 
 export async function handleButtonInteraction(
   interaction: ButtonInteraction,
@@ -232,6 +232,45 @@ export async function handleSelectMenuInteraction(
   if (interaction.customId === "session-select") {
     const selectedSessionId = interaction.values[0];
 
+    // Handle "New Session" option
+    if (selectedSessionId === "__new_session__") {
+      const channelId = interaction.channelId;
+      const { randomUUID } = await import("node:crypto");
+      // Set session_id to null so next message creates a fresh session
+      upsertSession(randomUUID(), channelId, null, "idle");
+
+      await interaction.update({
+        embeds: [
+          {
+            title: "✨ New Session",
+            description: "새 세션이 준비되었습니다.\n다음 메시지부터 새로운 대화가 시작됩니다.",
+            color: 0x00ff00,
+          },
+        ],
+        components: [],
+      });
+      return;
+    }
+
+    // Defer first to avoid 3s timeout while reading JSONL
+    await interaction.deferUpdate();
+
+    // Read last assistant message from session file
+    const channelId = interaction.channelId;
+    const project = getProject(channelId);
+    let lastMessage = "";
+    if (project) {
+      const sessionDir = findSessionDir(project.project_path);
+      if (sessionDir) {
+        const filePath = path.join(sessionDir, `${selectedSessionId}.jsonl`);
+        try {
+          lastMessage = await getLastAssistantMessage(filePath);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     // Show Resume / Delete buttons
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -250,11 +289,15 @@ export async function handleSelectMenuInteraction(
         .setStyle(ButtonStyle.Secondary),
     );
 
-    await interaction.update({
+    const preview = lastMessage && lastMessage !== "(no message)"
+      ? `\n\n**마지막 대화:**\n${lastMessage.slice(0, 300)}${lastMessage.length > 300 ? "..." : ""}`
+      : "";
+
+    await interaction.editReply({
       embeds: [
         {
           title: "Session Selected",
-          description: `Session: \`${selectedSessionId.slice(0, 8)}...\`\n\nResume or delete this session?`,
+          description: `Session: \`${selectedSessionId.slice(0, 8)}...\`\n\nResume or delete this session?${preview}`,
           color: 0x7c3aed,
         },
       ],

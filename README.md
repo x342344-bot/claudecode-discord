@@ -14,9 +14,9 @@ Run independent Claude Code sessions per channel, with tool use approval/denial 
 - ❓ Interactive question UI (selectable options + custom text input)
 - ⏹️ Stop button for instant cancellation during progress
 - 📎 File attachments support (images, documents, code files)
-- 🔄 Session resume/delete (persist across bot restarts)
+- 🔄 Session resume/delete/new (persist across bot restarts, last conversation preview)
 - ⏱️ Real-time progress display (tool usage, elapsed time)
-- 🔒 User whitelist, rate limiting, path security
+- 🔒 User whitelist, rate limiting, path security, duplicate instance prevention
 
 ## Tech Stack
 

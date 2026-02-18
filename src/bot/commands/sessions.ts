@@ -59,6 +59,49 @@ export function findSessionDir(projectPath: string): string | null {
 }
 
 /**
+ * Read the last assistant text message from a JSONL session file.
+ */
+export async function getLastAssistantMessage(filePath: string): Promise<string> {
+  const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
+  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+  let lastText = "";
+
+  for await (const line of rl) {
+    try {
+      const entry = JSON.parse(line);
+      if (entry.type === "assistant" && entry.message?.content) {
+        const content = entry.message.content;
+        let raw = "";
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === "text" && block.text) {
+              raw += block.text;
+            }
+          }
+        } else if (typeof content === "string") {
+          raw = content;
+        }
+        if (raw.trim()) {
+          lastText = raw.trim();
+        }
+      }
+    } catch {
+      // skip
+    }
+  }
+
+  rl.close();
+  stream.destroy();
+
+  if (!lastText) return "(no message)";
+
+  // Extract the last meaningful sentence/line
+  const lines = lastText.split("\n").map((l) => l.trim()).filter(Boolean);
+  return lines[lines.length - 1] || lastText.slice(-200);
+}
+
+/**
  * Read the first user message from a JSONL session file.
  */
 async function getFirstUserMessage(filePath: string): Promise<{ text: string; timestamp: string }> {
@@ -176,8 +219,16 @@ export async function execute(
   const dbSession = getSession(channelId);
   const activeSessionId = dbSession?.session_id ?? null;
 
-  // Build select menu (max 25 options)
-  const options = sessions.slice(0, 25).map((s, i) => {
+  // Build select menu (max 25 options, reserve 1 for "New Session")
+  const options: Array<{ label: string; description: string; value: string; default?: boolean }> = [
+    {
+      label: "✨ 새 세션 만들기",
+      description: "기존 세션 없이 새로운 대화를 시작합니다",
+      value: "__new_session__",
+    },
+  ];
+
+  const sessionOptions = sessions.slice(0, 24).map((s, i) => {
     const date = new Date(s.timestamp);
     const diffMs = Date.now() - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);
@@ -206,6 +257,8 @@ export async function execute(
       default: isActive,
     };
   });
+
+  options.push(...sessionOptions);
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId("session-select")
