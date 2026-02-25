@@ -66,39 +66,18 @@ class ClaudeBotTray : Form
     {
         try
         {
-            // Use tasklist to check if a node process with "ClaudeDiscordBot" window title exists
+            // Use PowerShell to check node processes with dist/index.js in command line
             var proc = new Process();
-            proc.StartInfo.FileName = "cmd.exe";
-            proc.StartInfo.Arguments = "/c tasklist /fi \"windowtitle eq ClaudeDiscordBot\" /fo csv /nh 2>nul";
+            proc.StartInfo.FileName = "powershell";
+            proc.StartInfo.Arguments = "-NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='node.exe'\\\" | Where-Object { $_.CommandLine -match 'dist.index\\.js' } | Select-Object -First 1 ProcessId | ForEach-Object { $_.ProcessId }\"";
             proc.StartInfo.UseShellExecute = false;
             proc.StartInfo.RedirectStandardOutput = true;
             proc.StartInfo.CreateNoWindow = true;
             proc.Start();
-            string output = proc.StandardOutput.ReadToEnd();
+            string output = proc.StandardOutput.ReadToEnd().Trim();
             proc.WaitForExit();
-            if (output.Contains("node"))
+            if (output.Length > 0)
                 return true;
-
-            // Fallback: check wmic for dist/index.js or dist\\index.js
-            var procs = Process.GetProcessesByName("node");
-            foreach (var p in procs)
-            {
-                try
-                {
-                    var wmicProc = new Process();
-                    wmicProc.StartInfo.FileName = "wmic";
-                    wmicProc.StartInfo.Arguments = "process where processid=" + p.Id + " get commandline /format:list";
-                    wmicProc.StartInfo.UseShellExecute = false;
-                    wmicProc.StartInfo.RedirectStandardOutput = true;
-                    wmicProc.StartInfo.CreateNoWindow = true;
-                    wmicProc.Start();
-                    string cmd = wmicProc.StandardOutput.ReadToEnd();
-                    wmicProc.WaitForExit();
-                    if (cmd != null && (cmd.Contains("dist/index.js") || cmd.Contains("dist\\index.js")))
-                        return true;
-                }
-                catch { }
-            }
         }
         catch { }
         return false;
