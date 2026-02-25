@@ -28,8 +28,8 @@ if %errorlevel% neq 0 (
         echo   Installing Node.js (this may take a moment^)...
         msiexec /i "!NODE_MSI!" /passive /norestart
         del "!NODE_MSI!" >nul 2>&1
-        :: Add Node.js to current session PATH
-        set "PATH=%PATH%;C:\Program Files\nodejs"
+        :: Add Node.js and npm global to current session PATH
+        set "PATH=%PATH%;C:\Program Files\nodejs;%APPDATA%\npm"
         where node >nul 2>&1
         if !errorlevel! equ 0 (
             echo   OK Node.js installed successfully
@@ -81,11 +81,15 @@ echo.
 
 :: --- 2. Claude Code CLI ---
 echo [2/4] Checking Claude Code CLI...
+:: Ensure npm global bin is in PATH
+set "PATH=%PATH%;%APPDATA%\npm"
 where claude >nul 2>&1
 if %errorlevel% neq 0 (
     echo   Claude Code not found. Installing...
     call npm install -g @anthropic-ai/claude-code
-    if %errorlevel% neq 0 (
+    :: Verify by checking if claude exists, not errorlevel
+    where claude >nul 2>&1
+    if !errorlevel! neq 0 (
         echo   X Failed to install Claude Code.
         pause
         exit /b 1
