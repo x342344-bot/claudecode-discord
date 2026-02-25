@@ -98,15 +98,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func isRunning() -> Bool {
-        let task = Process()
-        task.launchPath = "/bin/bash"
-        task.arguments = ["-c", "launchctl list \(label) 2>/dev/null"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-        try? task.run()
-        task.waitUntilExit()
-        return task.terminationStatus == 0
+        return FileManager.default.fileExists(atPath: botDir + "/.bot.lock")
     }
 
     private func updateStatus() {

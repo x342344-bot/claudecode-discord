@@ -81,6 +81,8 @@ if [ "$1" = "--fg" ]; then
     fi
 
     echo "[claude-bot] 봇 시작 (포그라운드)..."
+    touch "$SCRIPT_DIR/.bot.lock"
+    trap 'rm -f "$SCRIPT_DIR/.bot.lock"' EXIT
     exec "$NODE_BIN" dist/index.js
 fi
 

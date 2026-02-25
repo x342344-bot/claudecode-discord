@@ -34,6 +34,8 @@ if "%~1"=="--stop" (
     )
     :: node 프로세스 중 봇 관련 종료
     wmic process where "commandline like '%%dist/index.js%%' and name='node.exe'" call terminate >nul 2>&1
+    :: lock 파일 삭제
+    del "%SCRIPT_DIR%\.bot.lock" >nul 2>&1
     :: 트레이 앱 종료
     taskkill /im ClaudeBotTray.exe /f >nul 2>&1
     echo 🔴 봇 중지됨
@@ -155,8 +157,8 @@ if exist "%TRAY_EXE%" (
 if exist "%ENV_FILE%" (
     :: 작업 스케줄러 등록
     schtasks /create /tn "%TASK_NAME%" /tr "\"%SCRIPT_DIR%\win-start.bat\" --fg" /sc onlogon /rl highest /f >nul 2>&1
-    :: 봇 백그라운드 실행
-    start "ClaudeDiscordBot" /min cmd /c "cd /d %SCRIPT_DIR% && node dist/index.js"
+    :: 봇 백그라운드 실행 (lock 파일로 상태 관리)
+    start "ClaudeDiscordBot" /min cmd /c "cd /d %SCRIPT_DIR% && echo running> .bot.lock && node dist/index.js & del .bot.lock"
     echo 🟢 Bot started in background
 ) else (
     echo ⚙️ .env not found. Please configure settings from the tray icon.

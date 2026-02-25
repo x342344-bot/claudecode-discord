@@ -64,23 +64,7 @@ class ClaudeBotTray : Form
 
     private bool IsRunning()
     {
-        try
-        {
-            // Use PowerShell to check node processes with dist/index.js in command line
-            var proc = new Process();
-            proc.StartInfo.FileName = "powershell";
-            proc.StartInfo.Arguments = "-NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='node.exe'\\\" | Where-Object { $_.CommandLine -match 'dist.index\\.js' } | Select-Object -First 1 ProcessId | ForEach-Object { $_.ProcessId }\"";
-            proc.StartInfo.UseShellExecute = false;
-            proc.StartInfo.RedirectStandardOutput = true;
-            proc.StartInfo.CreateNoWindow = true;
-            proc.Start();
-            string output = proc.StandardOutput.ReadToEnd().Trim();
-            proc.WaitForExit();
-            if (output.Length > 0)
-                return true;
-        }
-        catch { }
-        return false;
+        return File.Exists(Path.Combine(botDir, ".bot.lock"));
     }
 
     private string GetVersion()

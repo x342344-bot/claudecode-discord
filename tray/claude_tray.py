@@ -24,11 +24,7 @@ current_version = "unknown"
 
 
 def is_running():
-    result = subprocess.run(
-        ["systemctl", "--user", "is-active", SERVICE_NAME],
-        capture_output=True, text=True
-    )
-    return result.stdout.strip() == "active"
+    return os.path.exists(os.path.join(BOT_DIR, ".bot.lock"))
 
 
 def get_version():
