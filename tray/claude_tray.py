@@ -159,7 +159,12 @@ def _edit_settings_tk():
 
     root = tk.Tk()
     root.title("Claude Discord Bot Settings")
-    root.geometry("520x480")
+    win_w, win_h = 600, 560
+    screen_w = root.winfo_screenwidth()
+    screen_h = root.winfo_screenheight()
+    x = (screen_w - win_w) // 2
+    y = (screen_h - win_h) // 2
+    root.geometry(f"{win_w}x{win_h}+{x}+{y}")
     root.resizable(False, False)
     root.configure(bg=BG)
 
