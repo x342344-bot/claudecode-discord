@@ -56,8 +56,9 @@ claudecode-discord/
 ├── install.bat             # Windows 자동 설치 스크립트
 ├── mac-start.sh            # macOS 백그라운드 실행 + 메뉴바
 ├── linux-start.sh          # Linux 백그라운드 실행 + 시스템 트레이
+├── win-start.bat           # Windows 백그라운드 실행 + 시스템 트레이
 ├── menubar/                # macOS 메뉴바 상태 앱 (Swift)
-├── tray/                   # Linux 시스템 트레이 앱 (Python)
+├── tray/                   # 시스템 트레이 앱 (Linux: Python, Windows: C#)
 ├── .env.example            # 환경변수 템플릿
 ├── src/
 │   ├── index.ts            # 엔트리포인트
@@ -207,6 +208,24 @@ Linux에서 봇을 systemd 서비스로 실행하고, 시스템 트레이에서 
 - 매 시작 시 git에서 자동 업데이트
 - 트레이는 `pip3 install pystray Pillow` 필요 (첫 실행 시 자동 설치)
 - GUI 없는 서버에서도 동작 (트레이만 생략)
+
+## Windows 간편 실행 (백그라운드 + 시스템 트레이)
+
+Windows에서 봇을 백그라운드로 실행하고, 시스템 트레이에서 상태를 확인할 수 있습니다.
+
+```batch
+win-start.bat          &:: 시작 (백그라운드 + 트레이 아이콘)
+win-start.bat --stop   &:: 중지
+win-start.bat --status &:: 상태 확인
+win-start.bat --fg     &:: 포그라운드 모드 (디버깅용)
+```
+
+- `.env` 없이 처음 실행하면 대화형 설정
+- 트레이 앱이 첫 실행 시 `.exe`로 자동 컴파일 (내장 .NET csc.exe 사용)
+- 시스템 트레이: 초록(실행 중) / 빨강(중지됨) / 주황(설정 필요)
+- 트레이에서: 시작/중지/재시작, 설정 편집 (GUI 폼), 로그 보기
+- 로그온 시 자동 시작 (작업 스케줄러)
+- 매 시작 시 git에서 자동 업데이트
 
 ## 개발 명령어
 

@@ -57,8 +57,9 @@ claudecode-discord/
 ├── install.bat             # Windows auto-installer
 ├── mac-start.sh            # macOS background launcher + menu bar
 ├── linux-start.sh          # Linux background launcher + system tray
+├── win-start.bat           # Windows background launcher + system tray
 ├── menubar/                # macOS menu bar status app (Swift)
-├── tray/                   # Linux system tray app (Python)
+├── tray/                   # System tray app (Linux: Python, Windows: C#)
 ├── .env.example            # Environment variable template
 ├── src/
 │   ├── index.ts            # Entry point
@@ -208,6 +209,24 @@ On Linux, you can run the bot as a systemd user service with an optional system 
 - Auto-updates from git on each start
 - Tray requires `pip3 install pystray Pillow` (auto-installed on first run)
 - Works without GUI (headless server) — tray is skipped automatically
+
+## Windows Quick Start (Background + System Tray)
+
+On Windows, you can run the bot in the background with a system tray indicator (.exe).
+
+```batch
+win-start.bat          &:: Start (background + tray icon)
+win-start.bat --stop   &:: Stop
+win-start.bat --status &:: Check status
+win-start.bat --fg     &:: Foreground mode (for debugging)
+```
+
+- First run without `.env` prompts interactive setup
+- Tray app compiled to `.exe` on first run (using built-in .NET csc.exe)
+- System tray: green (running) / red (stopped) / orange (setup needed)
+- Tray provides: start/stop/restart, settings editor (GUI form), log viewer
+- Auto-starts on logon (via Task Scheduler)
+- Auto-updates from git on each start
 
 ## Development
 
