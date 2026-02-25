@@ -4,9 +4,14 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 class ClaudeBotTray : Form
 {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
+    private const int EM_SETCUEBANNER = 0x1501;
+
     private NotifyIcon trayIcon;
     private System.Windows.Forms.Timer refreshTimer;
     private System.Windows.Forms.Timer updateCheckTimer;
@@ -402,7 +407,10 @@ class ClaudeBotTray : Form
 
                 if (fields[i][0] == "DISCORD_BOT_TOKEN" && val != null && val.Length > 10)
                 {
-                    tb.PlaceholderText = "••••" + val.Substring(val.Length - 6) + " (enter full token to change)";
+                    tb.HandleCreated += (s2, e2) => {
+                        SendMessage(((TextBox)s2).Handle, EM_SETCUEBANNER, IntPtr.Zero,
+                            "••••" + val.Substring(val.Length - 6) + " (enter full token to change)");
+                    };
                 }
                 else
                 {
