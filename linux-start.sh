@@ -181,12 +181,18 @@ if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
             echo "📦 트레이 앱 의존성 설치 중..."
             pip3 install pystray Pillow 2>/dev/null || pip install pystray Pillow 2>/dev/null
         fi
-        # AppIndicator 시스템 패키지 확인 (Ubuntu/Pop!_OS/Debian)
+        # AppIndicator + tkinter 시스템 패키지 확인 (Ubuntu/Pop!_OS/Debian)
+        NEED_APT=""
         if ! python3 -c "import gi; gi.require_version('AyatanaAppIndicator3', '0.1')" 2>/dev/null && \
            ! python3 -c "import gi; gi.require_version('AppIndicator3', '0.1')" 2>/dev/null; then
+            NEED_APT="gir1.2-ayatanaappindicator3-0.1"
+        fi
+        if ! python3 -c "import tkinter" 2>/dev/null; then
+            NEED_APT="$NEED_APT python3-tk"
+        fi
+        if [ -n "$NEED_APT" ]; then
             echo "📦 시스템 트레이 라이브러리 설치 중..."
-            sudo apt install -y gir1.2-ayatanaappindicator3-0.1 2>/dev/null || \
-            sudo apt install -y gir1.2-appindicator3-0.1 2>/dev/null || true
+            sudo apt install -y $NEED_APT 2>/dev/null || true
         fi
         if python3 -c "import pystray; from PIL import Image" 2>/dev/null; then
             pkill -f "claude_tray.py" 2>/dev/null
