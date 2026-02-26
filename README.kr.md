@@ -248,6 +248,10 @@ Linux에서 봇을 systemd 서비스로 실행하고, 시스템 트레이에서 
 
 Windows에서는 `install.bat`으로 모든 것이 설치되고 **바탕화면 바로가기**가 생성됩니다. 더블클릭으로 실행하세요.
 
+<p align="center">
+  <img src="docs/windows-tray.png" alt="Windows 컨트롤 패널" width="400">
+</p>
+
 ```batch
 win-start.bat          &:: 시작 (백그라운드 + 트레이 + 컨트롤 패널)
 win-start.bat --stop   &:: 중지

@@ -249,6 +249,10 @@ On Linux, you can run the bot as a systemd user service with an optional system 
 
 On Windows, `install.bat` sets up everything and creates a **desktop shortcut**. Double-click it to launch.
 
+<p align="center">
+  <img src="docs/windows-tray.png" alt="Windows Control Panel" width="400">
+</p>
+
 ```batch
 win-start.bat          &:: Start (background + tray + control panel)
 win-start.bat --stop   &:: Stop

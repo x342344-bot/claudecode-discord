@@ -886,9 +886,9 @@ class ClaudeBotTray : Form
         };
         ghLink.LinkClicked += (s, ev) => { Process.Start("https://github.com/chadingTV/claudecode-discord"); };
         controlPanel.Controls.Add(ghLink);
-        y += 30;
+        y += 28;
 
-        controlPanel.Height = y + 20;
+        controlPanel.Height = y + 45;
 
         // Restore position if it was already visible
         if (wasVisible)
