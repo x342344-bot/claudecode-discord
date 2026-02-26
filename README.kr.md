@@ -69,7 +69,7 @@ cd claudecode-discord
 ./install.sh
 
 # Windows
-install.bat
+./install.bat
 ```
 
 ### 셋업 가이드
@@ -268,7 +268,11 @@ win-start.bat --fg     &:: 포그라운드 모드 (디버깅용)
 - **컨트롤 패널 GUI**: 트레이 아이콘 왼쪽 클릭으로 시작/중지/재시작, 설정, 로그, 자동 업데이트
 - **EN / KR 언어 전환** (설정 기억됨)
 - 시스템 트레이: 초록(실행 중) / 빨강(중지됨) / 주황(설정 필요)
-- GUI 설정 다이얼로그 (`.env` 직접 편집 불필요)
+- GUI 설정 다이얼로그 — `.env` 직접 편집 불필요:
+
+<p align="center">
+  <img src="docs/windows-settings.png" alt="Windows 설정 다이얼로그" width="400">
+</p>
 - 원클릭 자동 업데이트: 코드 다운로드, 재빌드, 트레이 앱 재컴파일
 - 로그온 시 자동 시작 (Windows 레지스트리)
 - `install.bat`으로 바탕화면 바로가기 자동 생성

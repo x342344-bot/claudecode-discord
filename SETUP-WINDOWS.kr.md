@@ -11,7 +11,7 @@ Windows에서 Claude Code Discord Bot을 설치하고 실행하는 전체 과정
 ```
 git clone https://github.com/chadingTV/claudecode-discord.git
 cd claudecode-discord
-install.bat
+./install.bat
 ```
 
 `install.bat`이 자동으로 처리하는 것들:
@@ -169,6 +169,10 @@ npm run build
 ### 방법 A: GUI 설정 (권장)
 
 `win-start.bat`을 실행하거나 **바탕화면 바로가기**를 더블클릭하세요. 트레이 앱이 실행되고, `.env`가 없으면 자동으로 **설정** 창이 열립니다.
+
+<p align="center">
+  <img src="docs/windows-settings.png" alt="Windows 설정 다이얼로그" width="450">
+</p>
 
 항목을 채워주세요:
 - **Discord Bot Token** — 2-2단계에서 복사한 토큰

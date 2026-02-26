@@ -70,7 +70,7 @@ cd claudecode-discord
 ./install.sh
 
 # Windows
-install.bat
+./install.bat
 ```
 
 ### Setup Guides
@@ -269,7 +269,11 @@ The bot runs in the background with a **system tray icon**:
 - **Control Panel GUI**: left-click tray icon for start/stop/restart, settings, log viewer, auto-update
 - **EN / KR language toggle** with persistent preference
 - System tray: green (running) / red (stopped) / orange (setup needed)
-- GUI Settings dialog (no manual `.env` editing needed)
+- GUI Settings dialog — no manual `.env` editing needed:
+
+<p align="center">
+  <img src="docs/windows-settings.png" alt="Windows Settings Dialog" width="400">
+</p>
 - One-click auto-update: pulls code, rebuilds, recompiles tray app
 - Auto-starts on logon (via Windows Registry)
 - Desktop shortcut created by `install.bat`

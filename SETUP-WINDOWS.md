@@ -11,7 +11,7 @@ Complete guide for installing and running the Claude Code Discord Bot on Windows
 ```
 git clone https://github.com/chadingTV/claudecode-discord.git
 cd claudecode-discord
-install.bat
+./install.bat
 ```
 
 `install.bat` automatically handles:
@@ -169,6 +169,10 @@ npm run build
 ### Option A: GUI Settings (Recommended)
 
 Run `win-start.bat` or double-click the **desktop shortcut**. The tray app launches and opens the **Settings** dialog automatically if `.env` is not configured.
+
+<p align="center">
+  <img src="docs/windows-settings.png" alt="Windows Settings Dialog" width="450">
+</p>
 
 Fill in the fields:
 - **Discord Bot Token** — from step 2-2
