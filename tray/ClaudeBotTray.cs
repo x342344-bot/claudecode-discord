@@ -1067,8 +1067,19 @@ class ClaudeBotTray : Form
     [STAThread]
     static void Main()
     {
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
-        Application.Run(new ClaudeBotTray());
+        // Single instance check using named Mutex
+        bool createdNew;
+        using (var mutex = new Mutex(true, "ClaudeBotTray_SingleInstance", out createdNew))
+        {
+            if (!createdNew)
+            {
+                // Another instance is already running - exit silently
+                return;
+            }
+
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new ClaudeBotTray());
+        }
     }
 }
