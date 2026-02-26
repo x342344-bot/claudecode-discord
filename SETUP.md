@@ -115,6 +115,11 @@ npm run build   # Check for type errors
 1. Click **"OAuth2"** in the left menu
 2. In **"OAuth2 URL Generator"**:
    - **SCOPES**: Check `bot`, `applications.commands`
+
+   <p align="center">
+     <img src="docs/discord-scopes.png" alt="Discord OAuth2 Scopes" width="500">
+   </p>
+
    - **BOT PERMISSIONS**: Check `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands`
 
    <p align="center">

@@ -115,6 +115,11 @@ npm run build   # 타입 에러 없이 빌드되는지 확인
 1. 왼쪽 메뉴 **"OAuth2"** 클릭
 2. **"OAuth2 URL Generator"** 섹션에서:
    - **SCOPES**: `bot`, `applications.commands` 체크
+
+   <p align="center">
+     <img src="docs/discord-scopes.png" alt="Discord OAuth2 Scopes" width="500">
+   </p>
+
    - **BOT PERMISSIONS**: `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands` 체크
 
    <p align="center">
