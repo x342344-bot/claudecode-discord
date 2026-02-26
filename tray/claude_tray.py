@@ -127,7 +127,7 @@ def perform_update(icon, item):
         subprocess.run(["systemctl", "--user", "stop", SERVICE_NAME], capture_output=True)
 
     subprocess.run(["git", "pull", "origin", "main", "--tags"], cwd=BOT_DIR)
-    subprocess.run(["npm", "install", "--production"], cwd=BOT_DIR)
+    subprocess.run(["npm", "install"], cwd=BOT_DIR)
     subprocess.run(["npm", "run", "build"], cwd=BOT_DIR)
 
     current_version = get_version()
@@ -422,13 +422,25 @@ def update_icon(icon):
     icon.icon = create_icon(color)
 
 
+def manual_check_update(icon, item):
+    check_for_updates()
+    if update_available:
+        icon.menu = create_menu()
+    else:
+        icon.notify(L("No updates available.", "업데이트가 없습니다."), L("Up to Date", "최신 버전"))
+
+
 def create_menu():
     running = is_running()
     has_env = is_env_configured()
 
     version_item = pystray.MenuItem(L("Version: ", "버전: ") + current_version, None, enabled=False)
+    check_update_item = pystray.MenuItem(
+        L("Check for Updates", "업데이트 확인"),
+        manual_check_update, visible=not update_available
+    )
     update_item = pystray.MenuItem(
-        L("Update Available", "업데이트 가능"),
+        L("Update Available - Click to Update", "업데이트 가능 - 클릭하여 업데이트"),
         perform_update, visible=update_available
     )
     autostart_item = pystray.MenuItem(
@@ -461,6 +473,7 @@ def create_menu():
             autostart_item,
             lang_item,
             version_item,
+            check_update_item,
             update_item,
             pystray.Menu.SEPARATOR,
             github_item,
@@ -483,6 +496,7 @@ def create_menu():
             autostart_item,
             lang_item,
             version_item,
+            check_update_item,
             update_item,
             pystray.Menu.SEPARATOR,
             github_item,
@@ -503,6 +517,7 @@ def create_menu():
             autostart_item,
             lang_item,
             version_item,
+            check_update_item,
             update_item,
             pystray.Menu.SEPARATOR,
             github_item,
