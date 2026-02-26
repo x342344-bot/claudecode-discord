@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.png" alt="Claude Code Discord Controller" width="120">
+  <img src="docs/icon.png" alt="Claude Code Discord Controller" width="120" style="border-radius:20px">
 </p>
 
 # Claude Code Discord Controller
