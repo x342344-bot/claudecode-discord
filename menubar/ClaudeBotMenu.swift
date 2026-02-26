@@ -709,7 +709,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let fields: [(label: String, key: String, placeholder: String, defaultValue: String)] = [
             (L("Discord Bot Token:", "Discord 봇 토큰:"), "DISCORD_BOT_TOKEN",
              L("Paste your bot token here", "봇 토큰을 여기에 붙여넣으세요"), ""),
-            (L("Discord Guild ID:", "Discord 서버 ID:"), "DISCORD_GUILD_ID",
+            (L("Discord Guild ID (Server ID):", "Discord Guild ID (서버 ID):"), "DISCORD_GUILD_ID",
              L("Right-click server > Copy Server ID", "서버 우클릭 > 서버 ID 복사"), ""),
             (L("Allowed User IDs (comma-separated):", "허용된 사용자 ID (쉼표로 구분):"), "ALLOWED_USER_IDS",
              L("e.g. 123456789,987654321", "예: 123456789,987654321"), ""),
@@ -826,8 +826,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let errAlert = NSAlert()
                 errAlert.messageText = L("Required Fields Missing", "필수 항목 누락")
                 errAlert.informativeText = L(
-                    "Bot Token, Guild ID, and User IDs are required.",
-                    "Bot Token, Guild ID, User IDs는 필수 항목입니다."
+                    "Bot Token, Guild ID (Server ID), and User IDs are required.",
+                    "Bot Token, Guild ID (서버 ID), User IDs는 필수 항목입니다."
                 )
                 errAlert.alertStyle = .warning
                 errAlert.runModal()

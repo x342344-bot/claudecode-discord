@@ -208,7 +208,7 @@ def _edit_settings_gtk(icon=None):
     env = _load_env()
     fields = [
         ("DISCORD_BOT_TOKEN", L("Discord Bot Token", "Discord 봇 토큰")),
-        ("DISCORD_GUILD_ID", L("Discord Guild ID", "Discord 서버 ID")),
+        ("DISCORD_GUILD_ID", L("Discord Guild ID (Server ID)", "Discord Guild ID (서버 ID)")),
         ("ALLOWED_USER_IDS", L("Allowed User IDs (comma-separated)", "허용된 사용자 ID (쉼표로 구분)")),
         ("BASE_PROJECT_DIR", L("Base Project Directory", "기본 프로젝트 디렉토리")),
         ("RATE_LIMIT_PER_MINUTE", L("Rate Limit Per Minute", "분당 요청 제한")),
@@ -350,8 +350,8 @@ def _edit_settings_gtk(icon=None):
                 message_type=Gtk.MessageType.ERROR,
                 buttons=Gtk.ButtonsType.OK,
                 text=L(
-                    "Bot Token, Guild ID, and User IDs are required.",
-                    "Bot Token, Guild ID, User IDs는 필수 항목입니다."
+                    "Bot Token, Guild ID (Server ID), and User IDs are required.",
+                    "Bot Token, Guild ID (서버 ID), User IDs는 필수 항목입니다."
                 )
             )
             err.run()
