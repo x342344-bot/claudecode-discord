@@ -11,12 +11,7 @@ macOS와 Linux에서 Claude Code Discord Bot을 설치하고 실행하는 전체
 클론 후 설치 스크립트를 실행하면 Node.js, Claude Code CLI, npm 패키지를 자동으로 확인하고 설치합니다.
 
 ```bash
-# HTTPS
 git clone https://github.com/chadingTV/claudecode-discord.git
-
-# 또는 SSH
-git clone git@github.com:chadingTV/claudecode-discord.git
-
 cd claudecode-discord
 ./install.sh
 ```
@@ -121,6 +116,11 @@ npm run build   # 타입 에러 없이 빌드되는지 확인
 2. **"OAuth2 URL Generator"** 섹션에서:
    - **SCOPES**: `bot`, `applications.commands` 체크
    - **BOT PERMISSIONS**: `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands` 체크
+
+   <p align="center">
+     <img src="docs/discord-bot-permissions.png" alt="Discord Bot Permissions" width="500">
+   </p>
+
 3. 생성된 URL을 복사하여 브라우저에 붙여넣기
 4. 초대할 서버 선택 → **Authorize**
 

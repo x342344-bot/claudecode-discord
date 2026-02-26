@@ -143,6 +143,11 @@ npm run build
 2. **"OAuth2 URL Generator"** 섹션에서:
    - **SCOPES**: `bot`, `applications.commands` 체크
    - **BOT PERMISSIONS**: `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands` 체크
+
+   <p align="center">
+     <img src="docs/discord-bot-permissions.png" alt="Discord Bot Permissions" width="500">
+   </p>
+
 3. 생성된 URL을 복사하여 브라우저에 붙여넣기
 4. 초대할 서버 선택 → **Authorize**
 

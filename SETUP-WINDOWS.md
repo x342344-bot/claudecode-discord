@@ -143,6 +143,11 @@ npm run build
 2. In **"OAuth2 URL Generator"**:
    - **SCOPES**: Check `bot`, `applications.commands`
    - **BOT PERMISSIONS**: Check `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands`
+
+   <p align="center">
+     <img src="docs/discord-bot-permissions.png" alt="Discord Bot Permissions" width="500">
+   </p>
+
 3. Copy the generated URL and paste in your browser
 4. Select the server to invite to → **Authorize**
 

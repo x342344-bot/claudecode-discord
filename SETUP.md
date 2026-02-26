@@ -11,12 +11,7 @@ Complete guide for installing and running the Claude Code Discord Bot on macOS a
 After cloning, run the install script to automatically check and install Node.js, Claude Code CLI, and npm packages.
 
 ```bash
-# HTTPS
 git clone https://github.com/chadingTV/claudecode-discord.git
-
-# or SSH
-git clone git@github.com:chadingTV/claudecode-discord.git
-
 cd claudecode-discord
 ./install.sh
 ```
@@ -121,6 +116,11 @@ npm run build   # Check for type errors
 2. In **"OAuth2 URL Generator"**:
    - **SCOPES**: Check `bot`, `applications.commands`
    - **BOT PERMISSIONS**: Check `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands`
+
+   <p align="center">
+     <img src="docs/discord-bot-permissions.png" alt="Discord Bot Permissions" width="500">
+   </p>
+
 3. Copy the generated URL and paste in your browser
 4. Select the server to invite to → **Authorize**
 
