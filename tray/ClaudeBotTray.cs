@@ -388,9 +388,22 @@ class ClaudeBotTray : Form
     private void StartBot(object sender, EventArgs e)
     {
         KillBot();
+        // Copy node.exe as ClaudeBot.exe so it shows as "ClaudeBot" in Task Manager
+        string claudeBotExe = Path.Combine(botDir, "ClaudeBot.exe");
+        try
+        {
+            string nodeExe = RunCmdOutput("where", "node").Trim().Split('\n')[0].Trim();
+            if (File.Exists(nodeExe) && (!File.Exists(claudeBotExe) ||
+                File.GetLastWriteTime(nodeExe) > File.GetLastWriteTime(claudeBotExe)))
+            {
+                File.Copy(nodeExe, claudeBotExe, true);
+            }
+        }
+        catch { }
+        string exeName = File.Exists(claudeBotExe) ? "ClaudeBot.exe" : "node";
         // Run bot hidden via vbs
         string vbs = Path.Combine(botDir, ".bot-start.vbs");
-        string cmd = "cmd /c cd /d " + botDir + " & echo running> .bot.lock & node dist/index.js >> bot.log 2>&1 & del .bot.lock";
+        string cmd = "cmd /c cd /d " + botDir + " & echo running> .bot.lock & " + exeName + " dist/index.js >> bot.log 2>&1 & del .bot.lock";
         File.WriteAllText(vbs, "Set ws = CreateObject(\"WScript.Shell\")\nws.Run \"" + cmd.Replace("\"", "\"\"") + "\", 0, False\n");
         Process.Start("wscript", "\"" + vbs + "\"");
         // Wait for bot to start, then show notification
@@ -425,8 +438,16 @@ class ClaudeBotTray : Form
 
     private void KillBot()
     {
-        // Use PowerShell to reliably find and kill bot processes (node.exe + cmd.exe)
-        // cmd.exe /c wmic fails because % in LIKE clause gets interpreted as env vars
+        // Kill ClaudeBot.exe process (copied from node.exe with custom name)
+        try
+        {
+            foreach (var proc in Process.GetProcessesByName("ClaudeBot"))
+            {
+                try { proc.Kill(); proc.WaitForExit(3000); } catch { }
+            }
+        }
+        catch { }
+        // Fallback: kill any node.exe running dist/index.js (in case ClaudeBot.exe wasn't used)
         try
         {
             var proc = new Process();
