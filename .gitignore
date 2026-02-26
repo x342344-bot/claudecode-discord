@@ -16,4 +16,5 @@ bot-error.log
 menubar/ClaudeBotMenu
 tray/ClaudeBotTray.exe
 ClaudeBot.exe
+com.claude-discord.plist
 .tray-lang
