@@ -25,6 +25,7 @@ class ClaudeBotTray : Form
     private string taskName = "ClaudeDiscordBot";
     private string currentVersion = "unknown";
     private bool updateAvailable = false;
+    private bool lastPanelRunning = false;
 
     // Language support
     private string langPrefFile;
@@ -437,13 +438,14 @@ class ClaudeBotTray : Form
         int waitCount = 0;
         waitTimer.Tick += (s2, e2) => {
             waitCount++;
-            if (IsRunning())
+            bool nowRunning = IsRunning();
+            if (nowRunning)
             {
                 waitTimer.Stop();
                 try { File.Delete(vbs); } catch { }
                 UpdateStatus();
                 BuildMenu();
-                RebuildControlPanel();
+                if (nowRunning != lastPanelRunning) RebuildControlPanel();
                 trayIcon.BalloonTipTitle = L("Claude Discord Bot Started", "Claude Discord Bot 시작됨");
                 trayIcon.BalloonTipText = L("Bot is running. Click tray icon to manage.",
                                              "봇이 실행 중입니다. 트레이 아이콘을 클릭하여 관리하세요.");
@@ -457,7 +459,7 @@ class ClaudeBotTray : Form
                 try { File.Delete(vbs); } catch { }
                 UpdateStatus();
                 BuildMenu();
-                RebuildControlPanel();
+                if (nowRunning != lastPanelRunning) RebuildControlPanel();
             }
         };
         waitTimer.Start();
@@ -869,6 +871,7 @@ class ClaudeBotTray : Form
         // Remember position
         Point pos = controlPanel.Location;
         bool wasVisible = controlPanel.Visible;
+        lastPanelRunning = IsRunning();
 
         controlPanel.SuspendLayout();
         controlPanel.Controls.Clear();
@@ -991,13 +994,13 @@ class ClaudeBotTray : Form
                 controlPanel.Controls.Add(stopBtn);
 
                 var restartBtn = MakeDarkButton(L("Restart Bot", "봇 재시작"), 25 + halfBtnWidth + 10, y, halfBtnWidth, 42, BtnRestart, Color.FromArgb(220, 180, 90));
-                restartBtn.Click += (s, ev) => { RestartBot(null, null); RebuildControlPanel(); };
+                restartBtn.Click += (s, ev) => { RestartBot(null, null); };
                 controlPanel.Controls.Add(restartBtn);
             }
             else
             {
                 var startBtn = MakeDarkButton(L("Start Bot", "봇 시작"), 25, y, btnWidth, 42, BgButton, FgWhite);
-                startBtn.Click += (s, ev) => { StartBot(null, null); RebuildControlPanel(); };
+                startBtn.Click += (s, ev) => { StartBot(null, null); };
                 controlPanel.Controls.Add(startBtn);
             }
             y += 52;
