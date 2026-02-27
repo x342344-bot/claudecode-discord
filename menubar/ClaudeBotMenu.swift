@@ -170,6 +170,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let swiftSrc = "\(botDir)/menubar/ClaudeBotMenu.swift"
             let swiftBin = "\(botDir)/menubar/ClaudeBotMenu"
             if FileManager.default.fileExists(atPath: swiftSrc) {
+                // Accept Xcode license if needed before compiling
+                let xcrunCheck = runShell("xcrun --find swiftc 2>&1")
+                if xcrunCheck.contains("license") || xcrunCheck.contains("error") {
+                    runShell("osascript -e 'do shell script \"xcodebuild -license accept\" with administrator privileges' 2>/dev/null")
+                }
                 runShell("swiftc -o '\(swiftBin)' '\(swiftSrc)' -framework Cocoa 2>&1")
 
                 if wasRunning {
