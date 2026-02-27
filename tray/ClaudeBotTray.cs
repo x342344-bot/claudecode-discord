@@ -985,17 +985,17 @@ class ClaudeBotTray : Form
             if (running)
             {
                 var stopBtn = MakeDarkButton(L("Stop Bot", "봇 중지"), 25, y, halfBtnWidth, 42, BtnStop, Color.FromArgb(230, 120, 120));
-                stopBtn.Click += (s, ev) => { StopBot(null, null); controlPanel.Close(); };
+                stopBtn.Click += (s, ev) => { StopBot(null, null); RebuildControlPanel(); };
                 controlPanel.Controls.Add(stopBtn);
 
                 var restartBtn = MakeDarkButton(L("Restart Bot", "봇 재시작"), 25 + halfBtnWidth + 10, y, halfBtnWidth, 42, BtnRestart, Color.FromArgb(220, 180, 90));
-                restartBtn.Click += (s, ev) => { RestartBot(null, null); controlPanel.Close(); };
+                restartBtn.Click += (s, ev) => { RestartBot(null, null); RebuildControlPanel(); };
                 controlPanel.Controls.Add(restartBtn);
             }
             else
             {
                 var startBtn = MakeDarkButton(L("Start Bot", "봇 시작"), 25, y, btnWidth, 42, BgButton, FgWhite);
-                startBtn.Click += (s, ev) => { StartBot(null, null); controlPanel.Close(); };
+                startBtn.Click += (s, ev) => { StartBot(null, null); RebuildControlPanel(); };
                 controlPanel.Controls.Add(startBtn);
             }
             y += 52;
