@@ -156,6 +156,7 @@ npm run build
    </p>
 
 3. 생성된 URL을 복사하여 브라우저에 붙여넣기
+- (가장 하단에 generated URL 이 생기고 오른쪽끝에 복사 버튼)
 4. 초대할 서버 선택 → **Authorize**
 
 ---
