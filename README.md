@@ -7,7 +7,7 @@
 [![CI](https://github.com/chadingTV/claudecode-discord/actions/workflows/ci.yml/badge.svg)](https://github.com/chadingTV/claudecode-discord/actions)
 
 Control Claude Code from your phone — a multi-machine agent hub via Discord.
-**No API key needed — works with your existing Claude Pro/Max subscription.**
+**No API key needed — works with your existing Claude Max subscription.**
 
 <p align="center">
   <img src="docs/demo.gif" alt="Demo — register a project and code with Claude from Discord" width="300">
@@ -57,7 +57,7 @@ Discord isn't just a chat app — it's a surprisingly perfect fit for controllin
 
 ## Features
 
-- 💰 **No API key** — runs on Claude Code CLI with your Pro/Max subscription
+- 💰 **No API key** — runs on Claude Code CLI with your Max subscription
 - 📱 Remote control Claude Code from Discord (desktop/web/mobile)
 - 🔀 Independent sessions per channel (project directory mapping)
 - ✅ Tool use approve/deny via Discord button UI
