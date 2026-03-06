@@ -21,9 +21,15 @@ SERVICE_NAME = "claude-discord"
 BOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_PATH = os.path.join(BOT_DIR, ".env")
 LANG_PREF_FILE = os.path.join(BOT_DIR, ".tray-lang")
+import urllib.request
+import json
+import re
+
 update_available = False
 current_version = "unknown"
 is_korean = False
+cached_release_notes = ""
+cached_new_version = ""
 
 # Placeholder values from .env.example that should be treated as unconfigured
 EXAMPLE_VALUES = {
@@ -104,6 +110,82 @@ def get_version():
         return "unknown"
 
 
+def _extract_tag(version):
+    """'v1.1.0-3-gabcdef' -> 'v1.1.0'"""
+    parts = version.split("-")
+    if len(parts) >= 3 and parts[-1].startswith("g"):
+        return "-".join(parts[:-2])
+    return version
+
+
+def _parse_version(tag):
+    """'v1.1.0' -> [1, 1, 0]"""
+    cleaned = tag.lstrip("v")
+    try:
+        return [int(x) for x in cleaned.split(".")]
+    except ValueError:
+        return [0]
+
+
+def _is_newer(a, b):
+    """Returns True if version a > b"""
+    for i in range(max(len(a), len(b))):
+        av = a[i] if i < len(a) else 0
+        bv = b[i] if i < len(b) else 0
+        if av > bv:
+            return True
+        if av < bv:
+            return False
+    return False
+
+
+def _strip_markdown(text):
+    result = text.replace("**", "")
+    result = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", result)
+    lines = [line for line in result.split("\n") if "Full Changelog:" not in line]
+    result = "\n".join(lines)
+    while "\n\n\n" in result:
+        result = result.replace("\n\n\n", "\n\n")
+    return result.strip()
+
+
+def fetch_release_notes():
+    global cached_release_notes, cached_new_version
+    try:
+        url = "https://api.github.com/repos/chadingTV/claudecode-discord/releases"
+        req = urllib.request.Request(url)
+        req.add_header("Accept", "application/vnd.github.v3+json")
+        req.add_header("User-Agent", "claudecode-discord-tray")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            releases = json.loads(response.read().decode())
+
+        current_tag = _extract_tag(current_version)
+        current_parts = _parse_version(current_tag)
+        notes = []
+        latest_tag = current_tag
+
+        for r in releases:
+            tag = r.get("tag_name", "")
+            body = r.get("body", "")
+            if r.get("draft", False):
+                continue
+            r_parts = _parse_version(tag)
+            if _is_newer(r_parts, current_parts):
+                notes.append((tag, body))
+                if _is_newer(r_parts, _parse_version(latest_tag)):
+                    latest_tag = tag
+
+        notes.sort(key=lambda x: _parse_version(x[0]))
+        formatted = "\n\n".join(
+            f"━━━ {tag} ━━━\n{_strip_markdown(body)}" for tag, body in notes
+        )
+        cached_release_notes = formatted
+        cached_new_version = latest_tag
+    except Exception:
+        cached_release_notes = ""
+        cached_new_version = ""
+
+
 def check_for_updates():
     global update_available, current_version
     try:
@@ -116,12 +198,75 @@ def check_for_updates():
             ["git", "rev-parse", "origin/main"], capture_output=True, text=True, cwd=BOT_DIR
         ).stdout.strip()
         update_available = bool(local and remote and local != remote)
+        if update_available:
+            fetch_release_notes()
     except Exception:
         update_available = False
 
 
+def _show_update_confirmation():
+    """Show update confirmation dialog with release notes using yad or zenity."""
+    title = L("Update Available", "업데이트 가능")
+    version_info = f"{current_version} → {cached_new_version}" if cached_new_version else ""
+
+    if cached_release_notes:
+        text = (version_info + "\n\n" + cached_release_notes) if version_info else cached_release_notes
+        # Try yad first
+        try:
+            result = subprocess.run(
+                ["yad", "--text-info", "--title=" + title,
+                 "--width=500", "--height=400",
+                 "--button=" + L("Update:0", "업데이트:0"),
+                 "--button=" + L("Cancel:1", "취소:1"),
+                 "--fontname=monospace 10", "--wrap"],
+                input=text, text=True, capture_output=True
+            )
+            return result.returncode == 0
+        except FileNotFoundError:
+            pass
+        # zenity fallback
+        try:
+            result = subprocess.run(
+                ["zenity", "--text-info", "--title=" + title,
+                 "--width=500", "--height=400",
+                 "--ok-label=" + L("Update", "업데이트"),
+                 "--cancel-label=" + L("Cancel", "취소")],
+                input=text, text=True, capture_output=True
+            )
+            return result.returncode == 0
+        except FileNotFoundError:
+            pass
+
+    # No release notes or no dialog tool — simple question
+    msg = L("Do you want to update to the latest version?",
+            "최신 버전으로 업데이트하시겠습니까?")
+    if version_info:
+        msg = version_info + "\n\n" + msg
+    try:
+        result = subprocess.run(
+            ["zenity", "--question", "--title=" + title, "--text=" + msg],
+            capture_output=True
+        )
+        return result.returncode == 0
+    except FileNotFoundError:
+        pass
+    try:
+        result = subprocess.run(
+            ["yad", "--question", "--title=" + title, "--text=" + msg],
+            capture_output=True
+        )
+        return result.returncode == 0
+    except FileNotFoundError:
+        pass
+    # No dialog tool available — proceed anyway
+    return True
+
+
 def perform_update(icon, item):
     global update_available, current_version
+    if not _show_update_confirmation():
+        return
+
     # Stop bot before update
     subprocess.run(["systemctl", "--user", "stop", SERVICE_NAME], capture_output=True)
     time.sleep(1)

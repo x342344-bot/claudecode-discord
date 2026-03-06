@@ -18,6 +18,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var updateAvailable: Bool = false
     private var isKorean: Bool = false
     private var controlPanel: NSWindow?
+    private var cachedReleaseNotes: String = ""
+    private var cachedNewVersion: String = ""
 
     override init() {
         let scriptDir = (CommandLine.arguments[0] as NSString).deletingLastPathComponent
@@ -124,12 +126,98 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let local = self.runShell("cd '\(self.botDir)' && git rev-parse HEAD 2>/dev/null").trimmingCharacters(in: .whitespacesAndNewlines)
             let remote = self.runShell("cd '\(self.botDir)' && git rev-parse origin/main 2>/dev/null").trimmingCharacters(in: .whitespacesAndNewlines)
             let hasUpdate = !local.isEmpty && !remote.isEmpty && local != remote
+            if hasUpdate {
+                self.fetchReleaseNotes()
+            }
             DispatchQueue.main.async {
                 self.updateAvailable = hasUpdate
                 self.buildMenu()
                 self.rebuildControlPanel()
             }
         }
+    }
+
+    // MARK: - Release Notes
+
+    private func fetchReleaseNotes() {
+        guard let url = URL(string: "https://api.github.com/repos/chadingTV/claudecode-discord/releases") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue("claudecode-discord-tray", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+
+        let semaphore = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            defer { semaphore.signal() }
+            guard let data = data,
+                  let releases = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+
+            let currentTag = self.extractTag(from: self.currentVersion)
+            let currentParts = self.parseVersion(currentTag)
+            var notes: [(tag: String, body: String)] = []
+            var latestTag = currentTag
+
+            for release in releases {
+                guard let tagName = release["tag_name"] as? String,
+                      let body = release["body"] as? String,
+                      !(release["draft"] as? Bool ?? false) else { continue }
+                let rParts = self.parseVersion(tagName)
+                if self.isNewer(rParts, than: currentParts) {
+                    notes.append((tag: tagName, body: body))
+                    if self.isNewer(rParts, than: self.parseVersion(latestTag)) {
+                        latestTag = tagName
+                    }
+                }
+            }
+
+            notes.sort { self.isNewer(self.parseVersion($1.tag), than: self.parseVersion($0.tag)) }
+
+            let formatted = notes.map { "━━━ \($0.tag) ━━━\n\(self.stripMarkdown($0.body))" }
+                .joined(separator: "\n\n")
+
+            DispatchQueue.main.async {
+                self.cachedReleaseNotes = formatted
+                self.cachedNewVersion = latestTag
+            }
+        }.resume()
+        semaphore.wait()
+    }
+
+    private func extractTag(from version: String) -> String {
+        let parts = version.split(separator: "-")
+        if parts.count >= 3, parts.last?.hasPrefix("g") == true {
+            return String(parts.dropLast(2).joined(separator: "-"))
+        }
+        return version
+    }
+
+    private func parseVersion(_ tag: String) -> [Int] {
+        let cleaned = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        return cleaned.split(separator: ".").compactMap { Int($0) }
+    }
+
+    private func isNewer(_ a: [Int], than b: [Int]) -> Bool {
+        for i in 0..<max(a.count, b.count) {
+            let av = i < a.count ? a[i] : 0
+            let bv = i < b.count ? b[i] : 0
+            if av > bv { return true }
+            if av < bv { return false }
+        }
+        return false
+    }
+
+    private func stripMarkdown(_ text: String) -> String {
+        var result = text.replacingOccurrences(of: "**", with: "")
+        if let regex = try? NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\([^)]+\\)") {
+            result = regex.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "$1")
+        }
+        result = result.components(separatedBy: "\n")
+            .filter { !$0.contains("Full Changelog:") }
+            .joined(separator: "\n")
+        while result.contains("\n\n\n") {
+            result = result.replacingOccurrences(of: "\n\n\n", with: "\n\n")
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     @objc private func checkUpdateClicked() {
@@ -147,13 +235,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = L("Update Available", "업데이트 가능")
-        alert.informativeText = L(
-            "Do you want to update to the latest version? The bot and menu bar app will restart after updating.",
-            "최신 버전으로 업데이트하시겠습니까? 업데이트 후 봇과 메뉴바 앱이 재시작됩니다."
+
+        let versionInfo = cachedNewVersion.isEmpty ? "" : "\(currentVersion) → \(cachedNewVersion)\n\n"
+        alert.informativeText = versionInfo + L(
+            "Do you want to update? The bot and menu bar app will restart.",
+            "업데이트하시겠습니까? 봇과 메뉴바 앱이 재시작됩니다."
         )
         alert.alertStyle = .informational
         alert.addButton(withTitle: L("Update", "업데이트"))
         alert.addButton(withTitle: L("Cancel", "취소"))
+
+        if !cachedReleaseNotes.isEmpty {
+            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 250))
+            scrollView.hasVerticalScroller = true
+            scrollView.autohidesScrollers = true
+            let textView = NSTextView(frame: scrollView.bounds)
+            textView.string = cachedReleaseNotes
+            textView.isEditable = false
+            textView.isSelectable = true
+            textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+            textView.textContainerInset = NSSize(width: 8, height: 8)
+            if #available(macOS 10.14, *) {
+                textView.backgroundColor = .controlBackgroundColor
+            }
+            scrollView.documentView = textView
+            alert.accessoryView = scrollView
+        }
 
         if alert.runModal() == .alertFirstButtonReturn {
             let wasRunning = isRunning()

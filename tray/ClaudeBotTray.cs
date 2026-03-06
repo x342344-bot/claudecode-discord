@@ -25,6 +25,8 @@ class ClaudeBotTray : Form
     private string taskName = "ClaudeDiscordBot";
     private string currentVersion = "unknown";
     private bool updateAvailable = false;
+    private string cachedReleaseNotes = "";
+    private string cachedNewVersion = "";
     private bool lastPanelRunning = false;
     private bool botStarting = false;
     private Color lastIconColor = Color.Empty;
@@ -182,18 +184,186 @@ class ClaudeBotTray : Form
             string local = RunCmdOutput("git", "-C \"" + botDir + "\" rev-parse HEAD").Trim();
             string remote = RunCmdOutput("git", "-C \"" + botDir + "\" rev-parse origin/main").Trim();
             updateAvailable = !string.IsNullOrEmpty(local) && !string.IsNullOrEmpty(remote) && local != remote;
+            if (updateAvailable) FetchReleaseNotes();
         }
         catch { updateAvailable = false; }
     }
 
+    private string ExtractTag(string version)
+    {
+        var parts = version.Split('-');
+        if (parts.Length >= 3 && parts[parts.Length - 1].StartsWith("g"))
+        {
+            var tagParts = new string[parts.Length - 2];
+            Array.Copy(parts, tagParts, parts.Length - 2);
+            return string.Join("-", tagParts);
+        }
+        return version;
+    }
+
+    private int[] ParseVersion(string tag)
+    {
+        string cleaned = tag.StartsWith("v") ? tag.Substring(1) : tag;
+        var parts = cleaned.Split('.');
+        var result = new int[parts.Length];
+        for (int i = 0; i < parts.Length; i++)
+        {
+            int.TryParse(parts[i], out result[i]);
+        }
+        return result;
+    }
+
+    private bool IsNewerVersion(int[] a, int[] b)
+    {
+        int len = Math.Max(a.Length, b.Length);
+        for (int i = 0; i < len; i++)
+        {
+            int av = i < a.Length ? a[i] : 0;
+            int bv = i < b.Length ? b[i] : 0;
+            if (av > bv) return true;
+            if (av < bv) return false;
+        }
+        return false;
+    }
+
+    private void FetchReleaseNotes()
+    {
+        try
+        {
+            string currentTag = ExtractTag(currentVersion);
+            int[] currentParts = ParseVersion(currentTag);
+            // Use PowerShell to call GitHub API and format release notes
+            string psScript =
+                "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " +
+                "try { " +
+                "$r = Invoke-RestMethod -Uri 'https://api.github.com/repos/chadingTV/claudecode-discord/releases' -TimeoutSec 10 -Headers @{'User-Agent'='claudecode-discord-tray'}; " +
+                "$cv = '" + currentTag.Replace("'", "''") + "'.TrimStart('v').Split('.'); " +
+                "$notes = @(); $latest = '" + currentTag.Replace("'", "''") + "'; " +
+                "foreach($rel in $r) { " +
+                "if($rel.draft) { continue }; " +
+                "$rv = $rel.tag_name.TrimStart('v').Split('.'); " +
+                "$newer = $false; " +
+                "for($i=0; $i -lt [Math]::Max($rv.Length,$cv.Length); $i++) { " +
+                "$a = if($i -lt $rv.Length){[int]$rv[$i]}else{0}; " +
+                "$b = if($i -lt $cv.Length){[int]$cv[$i]}else{0}; " +
+                "if($a -gt $b){$newer=$true;break}; if($a -lt $b){break} }; " +
+                "if($newer) { " +
+                "$body = $rel.body -replace '\\*\\*','' -replace '\\[([^\\]]+)\\]\\([^)]+\\)','$1'; " +
+                "$body = ($body -split \\\"`n\\\" | Where-Object {$_ -notmatch 'Full Changelog:'}) -join \\\"`n\\\"; " +
+                "$notes += \\\"--- $($rel.tag_name) ---`n$body\\\"; " +
+                "$latest = $rel.tag_name } }; " +
+                "Write-Output \\\"LATEST:$latest\\\"; " +
+                "Write-Output 'NOTES:'; " +
+                "$notes | ForEach-Object { Write-Output $_ } " +
+                "} catch { Write-Output 'ERROR' }";
+            string output = RunCmdOutput("powershell", "-NoProfile -ExecutionPolicy Bypass -Command \"" + psScript + "\"");
+            string latestVersion = "";
+            var noteLines = new System.Collections.Generic.List<string>();
+            bool inNotes = false;
+            foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (line.StartsWith("LATEST:")) latestVersion = line.Substring(7);
+                else if (line == "NOTES:") inNotes = true;
+                else if (inNotes) noteLines.Add(line);
+            }
+            cachedNewVersion = latestVersion;
+            cachedReleaseNotes = string.Join("\r\n", noteLines.ToArray());
+        }
+        catch
+        {
+            cachedReleaseNotes = "";
+            cachedNewVersion = "";
+        }
+    }
+
+    private DialogResult ShowUpdateDialog()
+    {
+        var form = new Form()
+        {
+            Text = L("Update Available", "업데이트 가능"),
+            Width = 500, Height = 450,
+            StartPosition = FormStartPosition.CenterScreen,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false, MinimizeBox = false,
+            BackColor = Color.FromArgb(30, 30, 30),
+            ForeColor = Color.White,
+        };
+        int val = 1;
+        DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref val, sizeof(int));
+
+        DialogResult dialogResult = DialogResult.No;
+
+        string versionText = string.IsNullOrEmpty(cachedNewVersion) ? "" : currentVersion + " → " + cachedNewVersion;
+        var versionLabel = new Label()
+        {
+            Text = versionText, Left = 20, Top = 15, Width = 440, Height = 24,
+            Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold),
+            ForeColor = Color.White, BackColor = Color.Transparent
+        };
+        form.Controls.Add(versionLabel);
+
+        var descLabel = new Label()
+        {
+            Text = L("The bot will restart after updating.", "업데이트 후 봇이 재시작됩니다."),
+            Left = 20, Top = 42, Width = 440, Height = 20,
+            ForeColor = Color.Gray, BackColor = Color.Transparent,
+            Font = new Font(FontFamily.GenericSansSerif, 9)
+        };
+        form.Controls.Add(descLabel);
+
+        var notesBox = new TextBox()
+        {
+            Left = 20, Top = 70, Width = 440, Height = 280,
+            Multiline = true, ReadOnly = true,
+            ScrollBars = ScrollBars.Vertical,
+            Text = cachedReleaseNotes,
+            BackColor = Color.FromArgb(45, 45, 45), ForeColor = Color.White,
+            Font = new Font("Consolas", 9),
+            BorderStyle = BorderStyle.None,
+        };
+        form.Controls.Add(notesBox);
+
+        var updateBtn = new Button()
+        {
+            Text = L("Update", "업데이트"), Left = 20, Top = 365, Width = 215, Height = 36,
+            FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(88, 101, 242), ForeColor = Color.White,
+            Font = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Bold)
+        };
+        updateBtn.FlatAppearance.BorderSize = 0;
+        updateBtn.Click += (s, ev) => { dialogResult = DialogResult.Yes; form.Close(); };
+        form.Controls.Add(updateBtn);
+
+        var cancelBtn = new Button()
+        {
+            Text = L("Cancel", "취소"), Left = 245, Top = 365, Width = 215, Height = 36,
+            FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(55, 55, 55), ForeColor = Color.White,
+            Font = new Font(FontFamily.GenericSansSerif, 10)
+        };
+        cancelBtn.FlatAppearance.BorderSize = 0;
+        cancelBtn.Click += (s, ev) => { form.Close(); };
+        form.Controls.Add(cancelBtn);
+
+        form.ShowDialog();
+        form.Dispose();
+        return dialogResult;
+    }
+
     private void PerformUpdate(object sender, EventArgs e)
     {
-        var result = MessageBox.Show(
-            L("Do you want to update to the latest version? The bot will restart after updating.",
-              "최신 버전으로 업데이트하시겠습니까? 업데이트 후 봇이 재시작됩니다."),
-            L("Update Available", "업데이트 가능"),
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
+        DialogResult result;
+        if (!string.IsNullOrEmpty(cachedReleaseNotes))
+        {
+            result = ShowUpdateDialog();
+        }
+        else
+        {
+            result = MessageBox.Show(
+                L("Do you want to update to the latest version? The bot will restart after updating.",
+                  "최신 버전으로 업데이트하시겠습니까? 업데이트 후 봇이 재시작됩니다."),
+                L("Update Available", "업데이트 가능"),
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+        }
 
         if (result != DialogResult.Yes) return;
 
