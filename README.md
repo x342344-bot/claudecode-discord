@@ -144,6 +144,7 @@ claudecode-discord/
 | `/auto-approve on\|off` | Toggle auto-approval | `/auto-approve on` |
 | `/sessions` | List sessions to resume or delete | |
 | `/last` | Show the last Claude response from current session | |
+| `/usage` | Show Claude Code usage (Session 5hr / Weekly / Sonnet) | |
 | `/queue list` | View queued messages (cancel individually or all) | |
 | `/queue clear` | Cancel all queued messages | |
 | `/clear-sessions` | Delete all session files for the project | |

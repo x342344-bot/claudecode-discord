@@ -295,6 +295,7 @@ When Claude requests file edits, creation, or command execution, buttons appear:
 | `/auto-approve mode:on\|off` | Toggle auto-approval |
 | `/sessions` | List sessions to resume or delete |
 | `/clear-sessions` | Delete all sessions for the project |
+| `/usage` | Show Claude Code usage (Session 5hr / Weekly / Sonnet) |
 
 ---
 
