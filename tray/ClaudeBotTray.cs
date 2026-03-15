@@ -413,31 +413,33 @@ class ClaudeBotTray : Form
 
         if (File.Exists(traySrc))
         {
-            // CSC 경로 찾기용 bat 스크립트 생성
+            string updateLog = Path.Combine(botDir, "update.log");
             string batContent =
                 "@echo off\r\n" +
-                "chcp 65001 >nul 2>&1\r\n" +
                 "setlocal enabledelayedexpansion\r\n" +
-                ":: Kill all tray processes and wait\r\n" +
+                "set \"LOG=" + updateLog + "\"\r\n" +
+                "echo [%date% %time%] Update started > \"%LOG%\"\r\n" +
                 "taskkill /f /im ClaudeBotTray.exe >nul 2>&1\r\n" +
                 "timeout /t 3 /nobreak >nul\r\n" +
-                ":: Delete old exe\r\n" +
                 "del \"" + trayExe + "\" >nul 2>&1\r\n" +
-                ":: Find csc.exe\r\n" +
                 "set \"CSC=\"\r\n" +
                 "for /f \"delims=\" %%i in ('dir /b /s \"%WINDIR%\\Microsoft.NET\\Framework64\\csc.exe\" 2^>nul') do set \"CSC=%%i\"\r\n" +
                 "if \"!CSC!\"==\"\" (\r\n" +
                 "    for /f \"delims=\" %%i in ('dir /b /s \"%WINDIR%\\Microsoft.NET\\Framework\\csc.exe\" 2^>nul') do set \"CSC=%%i\"\r\n" +
                 ")\r\n" +
-                ":: Compile new tray exe\r\n" +
-                "if not \"!CSC!\"==\"\" (\r\n" +
-                "    \"!CSC!\" /nologo /target:winexe /out:\"" + trayExe + "\" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll \"" + traySrc + "\"\r\n" +
+                "if \"!CSC!\"==\"\" (\r\n" +
+                "    echo [%date% %time%] ERROR: csc.exe not found >> \"%LOG%\"\r\n" +
+                "    goto :done\r\n" +
                 ")\r\n" +
-                ":: Restart tray with --show\r\n" +
+                "echo [%date% %time%] Compiling with !CSC! >> \"%LOG%\"\r\n" +
+                "\"!CSC!\" /nologo /target:winexe /out:\"" + trayExe + "\" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll \"" + traySrc + "\" >> \"%LOG%\" 2>&1\r\n" +
                 "if exist \"" + trayExe + "\" (\r\n" +
+                "    echo [%date% %time%] Compile OK, restarting >> \"%LOG%\"\r\n" +
                 "    start \"\" \"" + trayExe + "\" --show\r\n" +
+                ") else (\r\n" +
+                "    echo [%date% %time%] ERROR: Compile failed >> \"%LOG%\"\r\n" +
                 ")\r\n" +
-                ":: Bot will be auto-started by tray app on launch\r\n";
+                ":done\r\n";
 
             batContent += "del \"" + updateBat + "\" >nul 2>&1\r\n";
 
