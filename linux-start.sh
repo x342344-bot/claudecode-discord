@@ -273,7 +273,8 @@ if [ "$HAS_GUI" = false ]; then
 fi
 
 # Create desktop shortcut
-DESKTOP_FILE="$HOME/Desktop/Claude Discord Bot.desktop"
+DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")
+DESKTOP_FILE="$DESKTOP_DIR/Claude Discord Bot.desktop"
 if [ ! -f "$DESKTOP_FILE" ]; then
     # Try to find an icon, fallback to no icon
     ICON_PATH="$SCRIPT_DIR/docs/icon-rounded.png"
