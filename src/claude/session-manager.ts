@@ -1,5 +1,6 @@
 import { query, type Query } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import type { TextChannel } from "discord.js";
 import {
   upsertSession,
@@ -86,6 +87,7 @@ class SessionManager {
     let lastActivity = L("Thinking...", "생각 중...");
     let toolUseCount = 0;
     let hasTextOutput = false;
+    let hasResult = false;
 
     // Heartbeat timer - updates status message every 15s when no text output yet
     const heartbeatInterval = setInterval(async () => {
@@ -110,6 +112,7 @@ class SessionManager {
         options: {
           cwd: project.project_path,
           permissionMode: "default",
+          env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),
 
           canUseTool: async (
@@ -351,18 +354,35 @@ class SessionManager {
           }
 
           // Send result embed
+          const resultText = resultMsg.result ?? L("Task completed", "작업 완료");
           const resultEmbed = createResultEmbed(
-            resultMsg.result ?? L("Task completed", "작업 완료"),
+            resultText,
             resultMsg.total_cost_usd ?? 0,
             resultMsg.duration_ms ?? 0,
             getConfig().SHOW_COST,
           );
           await channel.send({ embeds: [resultEmbed] });
 
+          // Detect auth/credit errors in result and suggest re-login
+          const resultAuthKeywords = ["credit balance", "not authenticated", "unauthorized", "authentication", "login required", "auth token", "expired", "not logged in", "please run /login"];
+          const lowerResult = resultText.toLowerCase();
+          if (resultAuthKeywords.some((kw) => lowerResult.includes(kw))) {
+            await channel.send(L(
+              "🔑 Claude Code is not logged in. Please open a terminal on the host PC and run `claude login` to authenticate, then try again.",
+              "🔑 Claude Code 로그인이 필요합니다. 호스트 PC에서 터미널을 열고 `claude login`을 실행하여 인증 후 다시 시도해 주세요.",
+            ));
+          }
+
           updateSessionStatus(channelId, "idle");
+          hasResult = true;
         }
       }
     } catch (error) {
+      // Skip error if result was already delivered (e.g., "Credit balance is too low" + exit code 1)
+      if (hasResult) {
+        console.warn(`[session] Ignoring post-result error for ${channelId}:`, error instanceof Error ? error.message : error);
+        return;
+      }
       const rawMsg =
         error instanceof Error ? error.message : "Unknown error occurred";
 
@@ -385,6 +405,16 @@ class SessionManager {
         }
       } else if (rawMsg.includes("process exited with code")) {
         errMsg = `${rawMsg}. The server may be temporarily unavailable — please try again later.`;
+      }
+
+      // Detect auth/credit errors and suggest re-login
+      const authKeywords = ["credit balance", "not authenticated", "unauthorized", "authentication", "login required", "auth token", "expired", "not logged in", "please run /login"];
+      const lowerMsg = rawMsg.toLowerCase();
+      if (authKeywords.some((kw) => lowerMsg.includes(kw))) {
+        errMsg += L(
+          "\n\n🔑 Claude Code is not logged in. Please open a terminal on the host PC and run `claude login` to authenticate, then try again.",
+          "\n\n🔑 Claude Code 로그인이 필요합니다. 호스트 PC에서 터미널을 열고 `claude login`을 실행하여 인증 후 다시 시도해 주세요.",
+        );
       }
 
       await channel.send(`❌ ${errMsg}`);

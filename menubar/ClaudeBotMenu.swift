@@ -279,7 +279,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 runShell("launchctl unload '\(plistDst)' 2>/dev/null")
             }
 
-            let output = runShell("cd '\(botDir)' && git stash && git pull origin main --tags && git stash pop; npm install --production && npm rebuild better-sqlite3 && npm run build 2>&1")
+            runShell("cd '\(botDir)' && git stash")
+            let pullOutput = runShell("cd '\(botDir)' && git pull origin main --tags 2>&1")
+            runShell("cd '\(botDir)' && git stash pop")
+
+            // Check if pull succeeded
+            let afterPull = runShell("cd '\(botDir)' && git rev-parse HEAD").trimmingCharacters(in: .whitespacesAndNewlines)
+            let remote = runShell("cd '\(botDir)' && git rev-parse origin/main").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !afterPull.isEmpty && !remote.isEmpty && afterPull != remote {
+                let errAlert = NSAlert()
+                errAlert.messageText = L("Update Failed", "업데이트 실패")
+                errAlert.informativeText = L("git pull failed:\n", "git pull 실패:\n") + pullOutput
+                errAlert.alertStyle = .critical
+                errAlert.runModal()
+                if wasRunning {
+                    generatePlist()
+                    runShell("launchctl load '\(plistDst)'")
+                }
+                return
+            }
+
+            let output = runShell("cd '\(botDir)' && npm install --production && npm rebuild better-sqlite3 && npm run build 2>&1")
 
             currentVersion = getVersion()
             updateAvailable = false

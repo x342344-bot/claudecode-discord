@@ -282,11 +282,30 @@ def perform_update(icon, item):
     time.sleep(1)
 
     subprocess.run(["git", "stash"], cwd=BOT_DIR)
-    subprocess.run(["git", "pull", "origin", "main", "--tags"], cwd=BOT_DIR)
+    pull_result = subprocess.run(["git", "pull", "origin", "main", "--tags"], capture_output=True, text=True, cwd=BOT_DIR)
     subprocess.run(["git", "stash", "pop"], cwd=BOT_DIR)
-    subprocess.run(["npm", "install"], cwd=BOT_DIR)
-    subprocess.run(["npm", "rebuild", "better-sqlite3"], cwd=BOT_DIR)
-    subprocess.run(["npm", "run", "build"], cwd=BOT_DIR)
+
+    if pull_result.returncode != 0:
+        err_msg = pull_result.stderr.strip() or pull_result.stdout.strip() or "Unknown error"
+        icon.notify(L("Update failed (git pull): ", "업데이트 실패 (git pull): ") + err_msg,
+                    L("Update Failed", "업데이트 실패"))
+        # Restart bot even on failure
+        subprocess.run(["systemctl", "--user", "start", SERVICE_NAME], capture_output=True)
+        update_icon(icon)
+        return
+
+    install_result = subprocess.run(["npm", "install"], capture_output=True, text=True, cwd=BOT_DIR)
+    subprocess.run(["npm", "rebuild", "better-sqlite3"], capture_output=True, cwd=BOT_DIR)
+    build_result = subprocess.run(["npm", "run", "build"], capture_output=True, text=True, cwd=BOT_DIR)
+
+    if build_result.returncode != 0:
+        err_msg = build_result.stderr.strip() or build_result.stdout.strip() or "Unknown error"
+        icon.notify(L("Update failed (build): ", "업데이트 실패 (빌드): ") + err_msg[:200],
+                    L("Update Failed", "업데이트 실패"))
+        # Restart bot even on failure
+        subprocess.run(["systemctl", "--user", "start", SERVICE_NAME], capture_output=True)
+        update_icon(icon)
+        return
 
     # Regenerate systemd service file (node path may change)
     start_script = os.path.join(BOT_DIR, "linux-start.sh")

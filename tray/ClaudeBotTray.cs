@@ -399,8 +399,22 @@ class ClaudeBotTray : Form
 
         // Stash local changes, pull, then restore
         RunCmdOutput("git", "-C \"" + botDir + "\" stash");
-        RunCmdOutput("git", "-C \"" + botDir + "\" pull origin main --tags");
+        string pullOutput = RunCmdOutput("git", "-C \"" + botDir + "\" pull origin main --tags");
         RunCmdOutput("git", "-C \"" + botDir + "\" stash pop");
+
+        // Check if pull succeeded by comparing versions
+        string afterPull = RunCmdOutput("git", "-C \"" + botDir + "\" rev-parse HEAD").Trim();
+        string remote = RunCmdOutput("git", "-C \"" + botDir + "\" rev-parse origin/main").Trim();
+        if (!string.IsNullOrEmpty(afterPull) && !string.IsNullOrEmpty(remote) && afterPull != remote)
+        {
+            MessageBox.Show(
+                L("Update failed. git pull may have failed:\n", "업데이트 실패. git pull이 실패했을 수 있습니다:\n") + pullOutput,
+                L("Update Failed", "업데이트 실패"),
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            if (wasRunning) StartBot(null, null);
+            return;
+        }
+
         // npm install, rebuild native modules & build
         RunCmd("cd /d \"" + botDir + "\" && npm install && npm rebuild better-sqlite3 && npm run build", true);
 
