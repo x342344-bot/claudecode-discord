@@ -279,6 +279,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 runShell("launchctl unload '\(plistDst)' 2>/dev/null")
             }
 
+            runShell("cd '\(botDir)' && git checkout -- package-lock.json")
             runShell("cd '\(botDir)' && git stash")
             let pullOutput = runShell("cd '\(botDir)' && git pull origin main --tags 2>&1")
             runShell("cd '\(botDir)' && git stash pop")

@@ -398,6 +398,7 @@ class ClaudeBotTray : Form
         }
 
         // Stash local changes, pull, then restore
+        RunCmdOutput("git", "-C \"" + botDir + "\" checkout -- package-lock.json");
         RunCmdOutput("git", "-C \"" + botDir + "\" stash");
         string pullOutput = RunCmdOutput("git", "-C \"" + botDir + "\" pull origin main --tags");
         RunCmdOutput("git", "-C \"" + botDir + "\" stash pop");

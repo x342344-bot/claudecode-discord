@@ -281,9 +281,10 @@ def perform_update(icon, item):
     subprocess.run(["systemctl", "--user", "stop", SERVICE_NAME], capture_output=True)
     time.sleep(1)
 
+    subprocess.run(["git", "checkout", "--", "package-lock.json"], capture_output=True, cwd=BOT_DIR)
     subprocess.run(["git", "stash"], cwd=BOT_DIR)
     pull_result = subprocess.run(["git", "pull", "origin", "main", "--tags"], capture_output=True, text=True, cwd=BOT_DIR)
-    subprocess.run(["git", "stash", "pop"], cwd=BOT_DIR)
+    subprocess.run(["git", "stash", "pop"], capture_output=True, cwd=BOT_DIR)
 
     if pull_result.returncode != 0:
         err_msg = pull_result.stderr.strip() or pull_result.stdout.strip() or "Unknown error"
