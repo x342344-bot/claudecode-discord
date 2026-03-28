@@ -69,7 +69,6 @@ claude
 
 > Claude Code는 Anthropic API 키가 아닌 **OAuth 인증**으로 동작합니다.
 > 별도의 `ANTHROPIC_API_KEY` 환경변수는 필요 없습니다.
-> (Max 플랜 사용자는 그대로, API 키 사용자는 `ANTHROPIC_API_KEY` 환경변수 설정 필요)
 
 ---
 

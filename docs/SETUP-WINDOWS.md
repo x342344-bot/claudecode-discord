@@ -107,7 +107,6 @@ claude   # First-time login (opens browser)
 
 > Claude Code uses **OAuth authentication**, not an API key.
 > No `ANTHROPIC_API_KEY` environment variable is needed.
-> (Max plan users: use as-is. API key users: set `ANTHROPIC_API_KEY` env var)
 
 ### Clone and Build
 

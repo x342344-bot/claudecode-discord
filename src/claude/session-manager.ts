@@ -112,7 +112,7 @@ class SessionManager {
         options: {
           cwd: project.project_path,
           permissionMode: "default",
-          env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
+          env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),
 
           canUseTool: async (
