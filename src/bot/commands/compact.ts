@@ -1,15 +1,14 @@
 import {
   ChatInputCommandInteraction,
   SlashCommandBuilder,
-  PermissionFlagsBits,
+  TextChannel,
 } from "discord.js";
-import { unregisterProject, getProject } from "../../db/database.js";
+import { getProject } from "../../db/database.js";
 import { sessionManager } from "../../claude/session-manager.js";
 
 export const data = new SlashCommandBuilder()
-  .setName("unregister")
-  .setDescription("Unregister this channel from its project")
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setName("compact")
+  .setDescription("压缩当前会话的上下文，释放 context window");
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -24,18 +23,17 @@ export async function execute(
     return;
   }
 
-  // Stop active session if any
-  await sessionManager.stopSession(channelId);
-
-  unregisterProject(channelId);
+  if (sessionManager.isActive(channelId)) {
+    await interaction.editReply({
+      content: "当前有活跃的会话正在运行，请等待完成或先 /stop。",
+    });
+    return;
+  }
 
   await interaction.editReply({
-    embeds: [
-      {
-        title: "项目已解除注册",
-        description: `已解除 \`${project.project_path}\` 的关联`,
-        color: 0xff0000,
-      },
-    ],
+    content: "🗜️ 正在压缩会话上下文...",
   });
+
+  const channel = interaction.channel as TextChannel;
+  await sessionManager.sendMessage(channel, "/compact");
 }

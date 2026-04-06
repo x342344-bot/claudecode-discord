@@ -118,6 +118,7 @@ describe("validateProjectPath", () => {
   it("returns null for valid directory path within BASE_PROJECT_DIR", () => {
     vi.spyOn(fs, "existsSync").mockReturnValue(true);
     vi.spyOn(fs, "statSync").mockReturnValue({ isDirectory: () => true } as fs.Stats);
+    vi.spyOn(fs, "realpathSync").mockReturnValue("/projects/my-app");
     const result = validateProjectPath("/projects/my-app");
     expect(result).toBeNull();
   });
@@ -125,6 +126,7 @@ describe("validateProjectPath", () => {
   it("allows BASE_PROJECT_DIR itself", () => {
     vi.spyOn(fs, "existsSync").mockReturnValue(true);
     vi.spyOn(fs, "statSync").mockReturnValue({ isDirectory: () => true } as fs.Stats);
+    vi.spyOn(fs, "realpathSync").mockReturnValue("/projects");
     const result = validateProjectPath("/projects");
     expect(result).toBeNull();
   });

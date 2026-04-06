@@ -1,5 +1,5 @@
 import "dotenv/config";
-import fs from "node:fs";
+import fs, { statSync } from "node:fs";
 import path from "node:path";
 import { loadConfig } from "./utils/config.js";
 import { initDatabase } from "./db/database.js";
@@ -60,6 +60,18 @@ async function main() {
   // Load and validate config
   loadConfig();
   console.log("Config loaded");
+
+  // Check .env file permissions
+  const envPath = path.join(process.cwd(), ".env");
+  try {
+    const stat = statSync(envPath);
+    const mode = stat.mode & 0o777;
+    if (mode & 0o077) {
+      console.warn(`⚠️ .env 文件权限过宽 (${mode.toString(8)})，建议执行: chmod 600 .env`);
+    }
+  } catch {
+    // .env might not exist if using environment variables directly
+  }
 
   // Initialize database
   initDatabase();

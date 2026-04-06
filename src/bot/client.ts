@@ -11,7 +11,7 @@ import { getConfig } from "../utils/config.js";
 import { handleMessage } from "./handlers/message.js";
 import { handleButtonInteraction, handleSelectMenuInteraction } from "./handlers/interaction.js";
 import { isAllowedUser } from "../security/guard.js";
-import { L } from "../utils/i18n.js";
+import { getProject, unregisterProject } from "../db/database.js";
 
 // Import commands
 import * as registerCmd from "./commands/register.js";
@@ -24,8 +24,9 @@ import * as clearSessionsCmd from "./commands/clear-sessions.js";
 import * as lastCmd from "./commands/last.js";
 import * as queueCmd from "./commands/queue.js";
 import * as usageCmd from "./commands/usage.js";
+import * as compactCmd from "./commands/compact.js";
 
-const commands = [registerCmd, unregisterCmd, statusCmd, stopCmd, autoApproveCmd, sessionsCmd, clearSessionsCmd, lastCmd, queueCmd, usageCmd];
+const commands = [registerCmd, unregisterCmd, statusCmd, stopCmd, autoApproveCmd, sessionsCmd, clearSessionsCmd, lastCmd, queueCmd, usageCmd, compactCmd];
 const commandMap = new Collection<
   string,
   { execute: (interaction: ChatInputCommandInteraction) => Promise<void> }
@@ -63,6 +64,19 @@ export async function startBot(): Promise<Client> {
     } catch (error) {
       console.error("Failed to register slash commands:", error);
     }
+
+    // Pre-register channel mappings from config
+    const channelMappings = config.CHANNEL_MAPPINGS;
+    if (Object.keys(channelMappings).length > 0) {
+      const { registerProject, getProject } = await import("../db/database.js");
+      for (const [channelId, projectPath] of Object.entries(channelMappings)) {
+        const existing = getProject(channelId);
+        if (!existing) {
+          registerProject(channelId, projectPath, config.DISCORD_GUILD_ID);
+          console.log(`Pre-registered channel ${channelId} → ${projectPath}`);
+        }
+      }
+    }
   });
 
   // Handle interactions (slash commands + buttons)
@@ -80,7 +94,7 @@ export async function startBot(): Promise<Client> {
         // Auth check
         if (!isAllowedUser(interaction.user.id)) {
           await interaction.reply({
-            content: L("You are not authorized to use this bot.", "이 봇을 사용할 권한이 없습니다."),
+            content: "你没有权限使用此机器人。",
             flags: ["Ephemeral"],
           });
           return;
@@ -100,7 +114,7 @@ export async function startBot(): Promise<Client> {
       }
     } catch (error) {
       console.error("Interaction error:", error);
-      const content = L("An error occurred while processing your command.", "명령을 처리하는 중 오류가 발생했습니다.");
+      const content = "处理命令时发生错误。";
       try {
         if (interaction.isRepliable()) {
           if (interaction.replied || interaction.deferred) {
@@ -123,11 +137,20 @@ export async function startBot(): Promise<Client> {
       console.error("messageCreate error:", error);
       try {
         if (message.channel.isSendable()) {
-          await message.reply(L("An error occurred while processing your message.", "메시지를 처리하는 중 오류가 발생했습니다."));
+          await message.reply("处理消息时发生错误。");
         }
       } catch {
         // ignore reply error
       }
+    }
+  });
+
+  // Clean up DB when a channel is deleted
+  client.on("channelDelete", (channel) => {
+    const project = getProject(channel.id);
+    if (project) {
+      unregisterProject(channel.id);
+      console.log(`Channel ${channel.id} deleted, unregistered from ${project.project_path}`);
     }
   });
 

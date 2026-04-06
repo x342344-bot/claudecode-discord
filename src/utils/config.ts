@@ -13,6 +13,18 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  CHANNEL_MAPPINGS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => {
+      if (!v) return {};
+      try {
+        return JSON.parse(v) as Record<string, string>;
+      } catch {
+        return {};
+      }
+    }),
 });
 
 export type Config = z.infer<typeof envSchema>;

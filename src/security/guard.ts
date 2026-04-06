@@ -58,5 +58,15 @@ export function validateProjectPath(projectPath: string): string | null {
     return `Path is not a directory: ${resolved}`;
   }
 
+  // Resolve symlinks to prevent escape from base directory
+  try {
+    const realPath = fs.realpathSync(resolved);
+    if (!realPath.startsWith(baseDir + path.sep) && realPath !== baseDir) {
+      return `Path resolves outside base directory via symlink`;
+    }
+  } catch {
+    return `Cannot resolve path: ${resolved}`;
+  }
+
   return null; // valid
 }

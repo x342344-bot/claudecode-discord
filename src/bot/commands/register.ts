@@ -9,7 +9,6 @@ import path from "node:path";
 import { registerProject, getProject } from "../../db/database.js";
 import { validateProjectPath } from "../../security/guard.js";
 import { getConfig } from "../../utils/config.js";
-import { L } from "../../utils/i18n.js";
 
 export const data = new SlashCommandBuilder()
   .setName("register")
@@ -39,7 +38,7 @@ export async function execute(
   const existing = getProject(channelId);
   if (existing) {
     await interaction.editReply({
-      content: L(`This channel is already registered to \`${existing.project_path}\`. Use \`/unregister\` first.`, `이 채널은 이미 \`${existing.project_path}\`에 등록되어 있습니다. 먼저 \`/unregister\`를 사용하세요.`),
+      content: `此频道已注册到 \`${existing.project_path}\`，请先使用 \`/unregister\` 解除绑定。`,
     });
     return;
   }
@@ -49,11 +48,11 @@ export async function execute(
     const resolved = path.resolve(projectPath);
     const baseDir = path.resolve(config.BASE_PROJECT_DIR);
     if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
-      await interaction.editReply({ content: L(`Invalid path: Path must be within ${baseDir}`, `잘못된 경로: ${baseDir} 내에 있어야 합니다`) });
+      await interaction.editReply({ content: `无效路径: 必须在 ${baseDir} 内` });
       return;
     }
     if (projectPath.includes("..")) {
-      await interaction.editReply({ content: L("Invalid path: Path must not contain '..'", "잘못된 경로: '..'을 포함할 수 없습니다") });
+      await interaction.editReply({ content: "无效路径: 不能包含 '..'" });
       return;
     }
     fs.mkdirSync(projectPath, { recursive: true });
@@ -62,7 +61,7 @@ export async function execute(
   // Validate path
   const error = validateProjectPath(projectPath);
   if (error) {
-    await interaction.editReply({ content: L(`Invalid path: ${error}`, `잘못된 경로: ${error}`) });
+    await interaction.editReply({ content: `无效路径: ${error}` });
     return;
   }
 
@@ -71,12 +70,12 @@ export async function execute(
   await interaction.editReply({
     embeds: [
       {
-        title: L("Project Registered", "프로젝트 등록됨"),
-        description: L(`This channel is now linked to:\n\`${projectPath}\``, `이 채널이 연결되었습니다:\n\`${projectPath}\``),
+        title: "项目已注册",
+        description: `此频道已关联到:\n\`${projectPath}\``,
         color: 0x00ff00,
         fields: [
-          { name: L("Status", "상태"), value: L("🔴 Offline", "🔴 오프라인"), inline: true },
-          { name: L("Auto-approve", "자동 승인"), value: L("Off", "꺼짐"), inline: true },
+          { name: "状态", value: "🔴 离线", inline: true },
+          { name: "自动批准", value: "关闭", inline: true },
         ],
       },
     ],

@@ -7,7 +7,6 @@ import {
 } from "discord.js";
 import { getProject } from "../../db/database.js";
 import { sessionManager } from "../../claude/session-manager.js";
-import { L } from "../../utils/i18n.js";
 
 export const data = new SlashCommandBuilder()
   .setName("queue")
@@ -27,10 +26,7 @@ export async function execute(
 
   if (!project) {
     await interaction.editReply({
-      content: L(
-        "This channel is not registered to any project.",
-        "이 채널은 어떤 프로젝트에도 등록되어 있지 않습니다."
-      ),
+      content: "此频道未注册到任何项目。",
     });
     return;
   }
@@ -41,7 +37,7 @@ export async function execute(
     const queue = sessionManager.getQueue(channelId);
     if (queue.length === 0) {
       await interaction.editReply({
-        content: L("No messages in queue.", "큐에 대기 중인 메시지가 없습니다."),
+        content: "队列中没有待处理的消息。",
       });
       return;
     }
@@ -50,7 +46,7 @@ export async function execute(
       .map((item, idx) => {
         const preview =
           item.prompt.length > 100
-            ? item.prompt.slice(0, 100) + "…"
+            ? item.prompt.slice(0, 100) + "..."
             : item.prompt;
         return `**${idx + 1}.** ${preview}`;
       })
@@ -67,7 +63,7 @@ export async function execute(
 
     const clearButton = new ButtonBuilder()
       .setCustomId(`queue-clear:${channelId}`)
-      .setLabel(L("Clear All", "모두 취소"))
+      .setLabel("全部清除")
       .setStyle(ButtonStyle.Danger);
 
     // Discord allows max 5 buttons per row, max 5 rows
@@ -81,10 +77,7 @@ export async function execute(
     await interaction.editReply({
       embeds: [
         {
-          title: L(
-            `📋 Message Queue (${queue.length})`,
-            `📋 메시지 큐 (${queue.length}개)`
-          ),
+          title: `📋 消息队列 (${queue.length})`,
           description: list,
           color: 0x5865f2,
         },
@@ -96,11 +89,8 @@ export async function execute(
     await interaction.editReply({
       embeds: [
         {
-          title: L("Queue Cleared", "큐 초기화됨"),
-          description: L(
-            `Cleared ${cleared} queued message(s).`,
-            `${cleared}개의 대기 중이던 메시지를 취소했습니다.`
-          ),
+          title: "队列已清空",
+          description: `已清除 ${cleared} 条待处理消息。`,
           color: 0xff6600,
         },
       ],

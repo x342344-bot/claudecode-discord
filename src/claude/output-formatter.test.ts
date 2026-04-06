@@ -1,9 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-
-// Mock i18n to always return English strings (regardless of .tray-lang file)
-vi.mock("../utils/i18n.js", () => ({
-  L: (en: string, _kr: string) => en,
-}));
+import { describe, it, expect } from "vitest";
 
 import {
   formatStreamChunk,
@@ -31,7 +26,7 @@ describe("formatStreamChunk", () => {
   it("truncates text over 1900 characters with ellipsis", () => {
     const text = "a".repeat(2000);
     const result = formatStreamChunk(text);
-    expect(result).toBe("a".repeat(1900) + "\n... (truncated)");
+    expect(result).toBe("a".repeat(1900) + "\n...（已截断）");
   });
 
   it("handles empty string", () => {
@@ -132,10 +127,10 @@ describe("createToolApprovalEmbed", () => {
       { file_path: "/src/index.ts", old_string: "foo", new_string: "bar" },
       "req-123",
     );
-    expect(result.embed.data.title).toBe("🔧 Tool Use: Edit");
-    const fileField = result.embed.data.fields?.find((f) => f.name === "File");
+    expect(result.embed.data.title).toBe("🔧 工具使用: Edit");
+    const fileField = result.embed.data.fields?.find((f) => f.name === "文件");
     expect(fileField?.value).toContain("index.ts");
-    const changesField = result.embed.data.fields?.find((f) => f.name === "Changes");
+    const changesField = result.embed.data.fields?.find((f) => f.name === "变更");
     expect(changesField).toBeDefined();
   });
 
@@ -145,9 +140,9 @@ describe("createToolApprovalEmbed", () => {
       { command: "ls -la", description: "List files" },
       "req-456",
     );
-    const cmdField = embed.data.fields?.find((f) => f.name === "Command");
+    const cmdField = embed.data.fields?.find((f) => f.name === "命令");
     expect(cmdField?.value).toContain("ls -la");
-    const descField = embed.data.fields?.find((f) => f.name === "Description");
+    const descField = embed.data.fields?.find((f) => f.name === "说明");
     expect(descField?.value).toBe("List files");
   });
 
@@ -162,7 +157,7 @@ describe("createToolApprovalEmbed", () => {
 
   it("skips Input field for empty input on generic tool", () => {
     const { embed } = createToolApprovalEmbed("CustomTool", {}, "req-abc");
-    const inputField = embed.data.fields?.find((f) => f.name === "Input");
+    const inputField = embed.data.fields?.find((f) => f.name === "输入");
     expect(inputField).toBeUndefined();
   });
 
@@ -172,7 +167,7 @@ describe("createToolApprovalEmbed", () => {
       { file_path: "/a.ts", content: "x".repeat(1000) },
       "req-w",
     );
-    const preview = embed.data.fields?.find((f) => f.name === "Content Preview");
+    const preview = embed.data.fields?.find((f) => f.name === "内容预览");
     expect(preview).toBeDefined();
     // Content sliced to 500 + fence chars
     expect(preview!.value!.length).toBeLessThanOrEqual(520);
@@ -185,17 +180,17 @@ describe("createResultEmbed", () => {
   it("shows cost in footer when showCost is true", () => {
     const embed = createResultEmbed("Done", 0.0123, 5000, true);
     const footer = embed.data.footer?.text ?? "";
-    expect(footer).toContain("Cost");
+    expect(footer).toContain("费用");
     expect(footer).toContain("$0.0123");
-    expect(footer).toContain("Duration");
+    expect(footer).toContain("耗时");
     expect(footer).toContain("5.0s");
   });
 
   it("hides cost in footer when showCost is false", () => {
     const embed = createResultEmbed("Done", 0.0123, 5000, false);
     const footer = embed.data.footer?.text ?? "";
-    expect(footer).not.toContain("Cost");
-    expect(footer).toContain("Duration : 5.0s");
+    expect(footer).not.toContain("费用");
+    expect(footer).toContain("耗时: 5.0s");
   });
 
   it("formats duration correctly", () => {

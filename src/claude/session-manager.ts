@@ -10,7 +10,6 @@ import {
   setAutoApprove,
 } from "../db/database.js";
 import { getConfig } from "../utils/config.js";
-import { L } from "../utils/i18n.js";
 import {
   createToolApprovalEmbed,
   createAskUserQuestionEmbed,
@@ -77,14 +76,14 @@ class SessionManager {
     let lastEditTime = 0;
     const stopRow = createStopButton(channelId);
     let currentMessage = await channel.send({
-      content: L("⏳ Thinking...", "⏳ 생각 중..."),
+      content: "⏳ 思考中...",
       components: [stopRow],
     });
     const EDIT_INTERVAL = 1500; // ms between edits (Discord rate limit friendly)
 
     // Activity tracking for progress display
     const startTime = Date.now();
-    let lastActivity = L("Thinking...", "생각 중...");
+    let lastActivity = "思考中...";
     let toolUseCount = 0;
     let hasTextOutput = false;
     let hasResult = false;
@@ -111,7 +110,7 @@ class SessionManager {
         prompt,
         options: {
           cwd: project.project_path,
-          permissionMode: "default",
+          permissionMode: "bypassPermissions",
           env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
           ...(resumeSessionId ? { resume: resumeSessionId } : {}),
 
@@ -123,15 +122,15 @@ class SessionManager {
 
             // Tool activity labels for Discord display
             const toolLabels: Record<string, string> = {
-              Read: L("Reading files", "파일 읽는 중"),
-              Glob: L("Searching files", "파일 검색 중"),
-              Grep: L("Searching code", "코드 검색 중"),
-              Write: L("Writing file", "파일 작성 중"),
-              Edit: L("Editing file", "파일 편집 중"),
-              Bash: L("Running command", "명령어 실행 중"),
-              WebSearch: L("Searching web", "웹 검색 중"),
-              WebFetch: L("Fetching URL", "URL 가져오는 중"),
-              TodoWrite: L("Updating tasks", "작업 업데이트 중"),
+              Read: "读取文件",
+              Glob: "搜索文件",
+              Grep: "搜索代码",
+              Write: "写入文件",
+              Edit: "编辑文件",
+              Bash: "执行命令",
+              WebSearch: "搜索网页",
+              WebFetch: "获取 URL",
+              TodoWrite: "更新任务",
             };
             const filePath = typeof input.file_path === "string"
               ? ` \`${(input.file_path as string).split(/[\\/]/).pop()}\``
@@ -201,7 +200,7 @@ class SessionManager {
                   updateSessionStatus(channelId, "online");
                   return {
                     behavior: "deny" as const,
-                    message: L("Question timed out", "질문 시간 초과"),
+                    message: "问题超时",
                   };
                 }
 
@@ -335,7 +334,7 @@ class SessionManager {
           if (responseBuffer.length > 0) {
             const chunks = splitMessage(responseBuffer);
             try {
-              await currentMessage.edit(chunks[0] || L("Done.", "완료."));
+              await currentMessage.edit(chunks[0] || "完成。");
               for (let i = 1; i < chunks.length; i++) {
                 await channel.send(chunks[i]);
               }
@@ -354,7 +353,7 @@ class SessionManager {
           }
 
           // Send result embed
-          const resultText = resultMsg.result ?? L("Task completed", "작업 완료");
+          const resultText = resultMsg.result ?? "任务完成";
           const resultEmbed = createResultEmbed(
             resultText,
             resultMsg.total_cost_usd ?? 0,
@@ -367,10 +366,9 @@ class SessionManager {
           const resultAuthKeywords = ["credit balance", "not authenticated", "unauthorized", "authentication", "login required", "auth token", "expired", "not logged in", "please run /login"];
           const lowerResult = resultText.toLowerCase();
           if (resultAuthKeywords.some((kw) => lowerResult.includes(kw))) {
-            await channel.send(L(
-              "🔑 Claude Code is not logged in. Please open a terminal on the host PC and run `claude login` to authenticate, then try again.",
-              "🔑 Claude Code 로그인이 필요합니다. 호스트 PC에서 터미널을 열고 `claude login`을 실행하여 인증 후 다시 시도해 주세요.",
-            ));
+            await channel.send(
+              "🔑 Claude Code 需要重新登录。请在主机 PC 上打开终端并运行 `claude login` 进行认证，然后重试。",
+            );
           }
 
           updateSessionStatus(channelId, "idle");
@@ -411,10 +409,7 @@ class SessionManager {
       const authKeywords = ["credit balance", "not authenticated", "unauthorized", "authentication", "login required", "auth token", "expired", "not logged in", "please run /login"];
       const lowerMsg = rawMsg.toLowerCase();
       if (authKeywords.some((kw) => lowerMsg.includes(kw))) {
-        errMsg += L(
-          "\n\n🔑 Claude Code is not logged in. Please open a terminal on the host PC and run `claude login` to authenticate, then try again.",
-          "\n\n🔑 Claude Code 로그인이 필요합니다. 호스트 PC에서 터미널을 열고 `claude login`을 실행하여 인증 후 다시 시도해 주세요.",
-        );
+        errMsg += "\n\n🔑 Claude Code 需要重新登录。请在主机 PC 上打开终端并运行 `claude login` 进行认证，然后重试。";
       }
 
       await channel.send(`❌ ${errMsg}`);
@@ -438,10 +433,10 @@ class SessionManager {
         const next = queue.shift()!;
         if (queue.length === 0) this.messageQueue.delete(channelId);
         const remaining = queue.length;
-        const preview = next.prompt.length > 40 ? next.prompt.slice(0, 40) + "…" : next.prompt;
+        const preview = next.prompt.length > 40 ? next.prompt.slice(0, 40) + "..." : next.prompt;
         const msg = remaining > 0
-          ? L(`📨 Processing queued message... (remaining: ${remaining})\n> ${preview}`, `📨 대기 중이던 메시지를 처리합니다... (남은 큐: ${remaining}개)\n> ${preview}`)
-          : L(`📨 Processing queued message...\n> ${preview}`, `📨 대기 중이던 메시지를 처리합니다...\n> ${preview}`);
+          ? `📨 处理队列中的消息...（剩余: ${remaining}）\n> ${preview}`
+          : `📨 处理队列中的消息...\n> ${preview}`;
         channel.send(msg).catch(() => {});
         this.sendMessage(next.channel, next.prompt).catch((err) => {
           console.error("Queue sendMessage error:", err);

@@ -6,7 +6,6 @@ import path from "node:path";
 import { getProject, getSession } from "../../db/database.js";
 import { findSessionDir, getLastAssistantMessageFull } from "./sessions.js";
 import { splitMessage } from "../../claude/output-formatter.js";
-import { L } from "../../utils/i18n.js";
 
 export const data = new SlashCommandBuilder()
   .setName("last")
@@ -20,7 +19,7 @@ export async function execute(
 
   if (!project) {
     await interaction.editReply({
-      content: L("This channel is not registered to any project. Use `/register` first.", "이 채널은 프로젝트에 등록되지 않았습니다. `/register`를 먼저 사용하세요."),
+      content: "此频道未注册到任何项目，请先使用 `/register`。",
     });
     return;
   }
@@ -28,7 +27,7 @@ export async function execute(
   const session = getSession(channelId);
   if (!session?.session_id) {
     await interaction.editReply({
-      content: L("No active session. Select a session from `/sessions`.", "활성 세션이 없습니다. `/sessions`에서 세션을 선택하세요."),
+      content: "没有活跃的会话，请从 `/sessions` 选择一个会话。",
     });
     return;
   }
@@ -36,7 +35,7 @@ export async function execute(
   const sessionDir = findSessionDir(project.project_path);
   if (!sessionDir) {
     await interaction.editReply({
-      content: L("Session directory not found.", "세션 디렉토리를 찾을 수 없습니다."),
+      content: "未找到会话目录。",
     });
     return;
   }
@@ -48,14 +47,14 @@ export async function execute(
     lastMessage = await getLastAssistantMessageFull(filePath);
   } catch {
     await interaction.editReply({
-      content: L("Cannot read session file.", "세션 파일을 읽을 수 없습니다."),
+      content: "无法读取会话文件。",
     });
     return;
   }
 
   if (lastMessage === "(no message)") {
     await interaction.editReply({
-      content: L("No Claude response in this session.", "이 세션에 Claude 응답이 없습니다."),
+      content: "此会话没有 Claude 回复。",
     });
     return;
   }

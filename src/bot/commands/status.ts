@@ -4,7 +4,6 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { getAllProjects, getSession } from "../../db/database.js";
-import { L } from "../../utils/i18n.js";
 
 const STATUS_EMOJI: Record<string, string> = {
   online: "🟢",
@@ -25,13 +24,13 @@ export async function execute(
 
   if (projects.length === 0) {
     await interaction.editReply({
-      content: L("No projects registered. Use `/register` in a channel first.", "등록된 프로젝트가 없습니다. 먼저 채널에서 `/register`를 사용하세요."),
+      content: "没有已注册的项目，请先在频道中使用 `/register`。",
     });
     return;
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(L("Claude Code Sessions", "Claude Code 세션"))
+    .setTitle("Claude Code 会话")
     .setColor(0x7c3aed)
     .setTimestamp();
 
@@ -45,9 +44,9 @@ export async function execute(
       name: `${emoji} <#${project.channel_id}>`,
       value: [
         `\`${project.project_path}\``,
-        `${L("Status", "상태")}: **${status}**`,
-        `${L("Auto-approve", "자동 승인")}: ${project.auto_approve ? L("On", "켜짐") : L("Off", "꺼짐")}`,
-        `${L("Last activity", "마지막 활동")}: ${lastActivity}`,
+        `状态: **${status}**`,
+        `自动批准: ${project.auto_approve ? "开启" : "关闭"}`,
+        `最后活动: ${lastActivity}`,
       ].join("\n"),
       inline: false,
     });

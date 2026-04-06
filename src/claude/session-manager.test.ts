@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock all external dependencies before importing session-manager
-vi.mock("../utils/i18n.js", () => ({
-  L: (en: string, _kr: string) => en,
-}));
-
 vi.mock("../db/database.js", () => ({
   upsertSession: vi.fn(),
   updateSessionStatus: vi.fn(),
