@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import path from "node:path";
-import type { Project, Session, SessionStatus } from "./types.js";
+import type { EffortLevel, Project, Session, SessionStatus } from "./types.js";
 
 const DB_PATH = path.join(process.cwd(), "data.db");
 
@@ -16,7 +16,7 @@ export function initDatabase(): void {
       channel_id TEXT PRIMARY KEY,
       project_path TEXT NOT NULL,
       guild_id TEXT NOT NULL,
-      auto_approve INTEGER DEFAULT 0,
+      auto_approve INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -29,6 +29,12 @@ export function initDatabase(): void {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+
+  // Migration: add effort column to projects if not exists
+  const columns = db.pragma("table_info(projects)") as { name: string }[];
+  if (!columns.some((c) => c.name === "effort")) {
+    db.exec("ALTER TABLE projects ADD COLUMN effort TEXT DEFAULT NULL");
+  }
 }
 
 export function getDb(): Database.Database {
@@ -71,6 +77,16 @@ export function setAutoApprove(
 ): void {
   db.prepare("UPDATE projects SET auto_approve = ? WHERE channel_id = ?").run(
     autoApprove ? 1 : 0,
+    channelId,
+  );
+}
+
+export function setEffort(
+  channelId: string,
+  effort: EffortLevel | null,
+): void {
+  db.prepare("UPDATE projects SET effort = ? WHERE channel_id = ?").run(
+    effort,
     channelId,
   );
 }

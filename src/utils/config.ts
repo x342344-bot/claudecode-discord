@@ -13,6 +13,8 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  API_PORT: z.coerce.number().int().positive().default(18801),
+  API_SECRET: z.string().optional().default(""),
   CHANNEL_MAPPINGS: z
     .string()
     .optional()

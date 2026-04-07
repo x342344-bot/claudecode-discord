@@ -39,7 +39,7 @@ describe("database", () => {
       expect(project).toBeDefined();
       expect(project!.project_path).toBe("/path/to/project");
       expect(project!.guild_id).toBe("guild1");
-      expect(project!.auto_approve).toBe(0);
+      expect(project!.auto_approve).toBe(1);
     });
 
     it("registerProject with same channelId replaces existing", () => {
@@ -72,13 +72,13 @@ describe("database", () => {
 
     it("setAutoApprove toggles auto_approve flag", () => {
       registerProject("ch1", "/p1", "guild1");
-      expect(getProject("ch1")!.auto_approve).toBe(0);
-
-      setAutoApprove("ch1", true);
       expect(getProject("ch1")!.auto_approve).toBe(1);
 
       setAutoApprove("ch1", false);
       expect(getProject("ch1")!.auto_approve).toBe(0);
+
+      setAutoApprove("ch1", true);
+      expect(getProject("ch1")!.auto_approve).toBe(1);
     });
   });
 

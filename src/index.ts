@@ -4,6 +4,7 @@ import path from "node:path";
 import { loadConfig } from "./utils/config.js";
 import { initDatabase } from "./db/database.js";
 import { startBot } from "./bot/client.js";
+import { startPushApi } from "./api/server.js";
 
 const LOCK_FILE = path.join(process.cwd(), ".bot.lock");
 
@@ -78,8 +79,12 @@ async function main() {
   console.log("Database initialized");
 
   // Start Discord bot
-  await startBot();
+  const client = await startBot();
   console.log("Bot is running!");
+
+  // Start Push API
+  startPushApi(client);
+
 }
 
 main().catch((error) => {

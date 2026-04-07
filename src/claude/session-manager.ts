@@ -105,14 +105,20 @@ class SessionManager {
       }
     }, 15_000);
 
+    // Track whether we're using resume (may fallback to new session)
+    let activeResumeId = resumeSessionId;
+
     try {
-      const queryInstance = query({
-        prompt,
-        options: {
-          cwd: project.project_path,
-          permissionMode: "bypassPermissions",
-          env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
-          ...(resumeSessionId ? { resume: resumeSessionId } : {}),
+      const createQueryInstance = (useResume: string | undefined) => {
+        console.log(`[session] Creating query: cwd=${project.project_path}, resume=${useResume ?? "NEW"}, effort=${project.effort ?? "default"}`);
+        return query({
+          prompt,
+          options: {
+            cwd: project.project_path,
+            permissionMode: "bypassPermissions",
+            ...(project.effort ? { effort: project.effort } : {}),
+            env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
+            ...(useResume ? { resume: useResume } : {}),
 
           canUseTool: async (
             toolName: string,
@@ -265,16 +271,48 @@ class SessionManager {
           },
         },
       });
+      };
+
+      let queryInstance = createQueryInstance(activeResumeId);
 
       // Store the active session
       this.sessions.set(channelId, {
         queryInstance,
         channelId,
-        sessionId: resumeSessionId ?? null,
+        sessionId: activeResumeId ?? null,
         dbId,
       });
 
-      for await (const message of queryInstance) {
+      // Try to start stream; if resume fails, fallback to new session with notification
+      let messageStream: AsyncIterable<any>;
+      try {
+        console.log(`[session] Starting message stream for ${channelId}...`);
+        // Test the stream by getting its iterator
+        const iterator = queryInstance[Symbol.asyncIterator]();
+        const first = await iterator.next();
+        // Reconstruct iterable from first + rest
+        messageStream = (async function* () {
+          if (!first.done) {
+            yield first.value;
+            yield* { [Symbol.asyncIterator]: () => iterator };
+          }
+        })();
+      } catch (resumeError) {
+        if (!activeResumeId) throw resumeError; // not a resume issue, rethrow
+        const errDetail = resumeError instanceof Error ? resumeError.message : String(resumeError);
+        console.warn(`[session] Resume failed for ${channelId} (session ${activeResumeId}):`, errDetail);
+        await channel.send(
+          `⚠️ Session 恢复失败（\`${activeResumeId?.slice(0, 8)}...\`）\n` +
+          `原因: ${errDetail.slice(0, 200)}\n\n` +
+          `修复方式:\n` +
+          `• \`/stop\` → 清除旧 session，下次发消息自动创建新 session\n` +
+          `• \`/sessions\` → 选择其他 session 恢复`
+        );
+        updateSessionStatus(channelId, "offline");
+        return;
+      }
+
+      for await (const message of messageStream) {
         // Capture session ID
         if (
           message.type === "system" &&

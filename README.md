@@ -4,275 +4,203 @@
 
 # Claude Code Discord Controller
 
-[![CI](https://github.com/chadingTV/claudecode-discord/actions/workflows/ci.yml/badge.svg)](https://github.com/chadingTV/claudecode-discord/actions)
-
-Control Claude Code from your phone — a multi-machine agent hub via Discord.
-**No API key needed — works with your existing Claude Pro or Max subscription.**
+通过 Discord 远程控制 Claude Code — 多频道独立 session，手机随时操控。
+**不需要 API key — 直接使用你的 Claude Pro / Max 订阅。**
 
 <p align="center">
   <img src="docs/demo.gif" alt="Demo — register a project and code with Claude from Discord" width="300">
 </p>
 
-> **[Korean documentation (한국어)](docs/README.kr.md)**
+## 为什么用这个 Bot？
 
-## Why This Bot? — vs Official Remote Control
+Anthropic 的 [Remote Control](https://code.claude.com/docs/en/remote-control) 只能查看正在运行的 session。这个 bot 更进一步 — 它是一个 **多机器 Agent 中枢**，作为守护进程运行，按需创建 session，支持团队协作。
 
-Anthropic's [Remote Control](https://code.claude.com/docs/en/remote-control) lets you view a running local session from your phone. This bot goes further — it's a **multi-machine agent hub** that runs as a daemon, creates new sessions on demand, and supports team collaboration.
+|                              | 本 Bot | 官方 Remote Control |
+|------------------------------|:------:|:-------------------:|
+| 手机发起新 session           | ✅     | ❌                  |
+| 守护进程（关终端不断）       | ✅     | ❌                  |
+| 多机器统一管理               | ✅     | ❌                  |
+| 每台机器并发 session         | ✅     | ❌                  |
+| 推送通知                     | ✅     | ❌                  |
+| 团队协作                     | ✅     | ❌                  |
+| 零开放端口                   | ✅     | ✅                  |
 
-|                              | This Bot | Official Remote |
-|------------------------------|:--------:|:---------------:|
-| Start new session from phone | ✅       | ❌              |
-| Daemon (survives terminal close) | ✅   | ❌              |
-| Multi-machine hub            | ✅       | ❌              |
-| Concurrent sessions per machine | ✅    | ❌              |
-| Push notifications           | ✅       | ❌              |
-| Team collaboration           | ✅       | ❌              |
-| Native tray app (3 OS)       | ✅       | ❌              |
-| Zero open ports              | ✅       | ✅              |
+### 多机器中枢
 
-### Multi-PC Hub
-
-Create a separate Discord bot per machine, invite them all to the same server, and assign channels:
+每台机器创建一个 Discord bot，邀请到同一个 server，分配频道：
 
 ```
 Your Discord Server
-├── #work-mac-frontend     ← Bot on work Mac
-├── #work-mac-backend      ← Bot on work Mac
-├── #home-pc-sideproject   ← Bot on home PC
-├── #cloud-server-infra    ← Bot on cloud server
+├── #work-mac-frontend     ← 公司 Mac 上的 Bot
+├── #work-mac-backend      ← 公司 Mac 上的 Bot
+├── #home-pc-sideproject   ← 家里 PC 上的 Bot
+├── #cloud-server-infra    ← 云服务器上的 Bot
 ```
 
-**Control every machine's Claude Code from a single phone.** The channel list itself becomes your real-time status dashboard across all machines and projects.
+**一部手机控制所有机器的 Claude Code。** 频道列表就是你的实时状态看板。
 
-## Why Discord?
+## 为什么选 Discord？
 
-Discord isn't just a chat app — it's a surprisingly perfect fit for controlling AI agents:
+- **手机上已经有了。** 不用装新 app，不用记网址
+- **免费推送通知。** Claude 需要审批或完成任务时立即收到通知
+- **频道 = 工作区。** 每个频道映射一个项目目录，侧边栏就是项目看板
+- **丰富的 UI。** 按钮、下拉菜单、Embed、文件上传 — Discord 自带交互组件
+- **天然支持团队。** 邀请队友到 server，一起看 Claude 工作、审批工具调用
+- **全平台。** Windows、macOS、Linux、iOS、Android、浏览器
 
-- **Already on your phone.** No new app to install, no web UI to bookmark. Open Discord and go.
-- **Push notifications for free.** Get alerted instantly when Claude needs approval or finishes a task — even with the phone locked.
-- **Channels = workspaces.** Each channel maps to a project directory. The sidebar becomes a real-time dashboard of all your projects.
-- **Rich UI out of the box.** Buttons, select menus, embeds, file uploads — Discord provides the interactive components, so the bot doesn't need its own frontend.
-- **Team-ready by default.** Invite teammates to your server. They can watch Claude work, approve tool calls, or queue tasks — no extra auth layer needed.
-- **Cross-platform.** Windows, macOS, Linux, iOS, Android, web browser — Discord runs everywhere.
+## 功能
 
-## Features
+- 💰 **不需要 API key** — 使用 Claude Code CLI + 你的 Pro/Max 订阅
+- 📱 从 Discord 远程控制 Claude Code（桌面/网页/手机）
+- 🔀 每个频道独立 session（项目目录映射）
+- ✅ 工具调用通过 Discord 按钮审批/拒绝
+- ❓ 交互式问答 UI（可选选项 + 自定义文本输入）
+- ⏹️ 进行中 Stop 按钮即时取消，消息队列顺序处理
+- 📎 文件附件支持（图片、文档、代码文件）
+- 🔄 Session 恢复/删除/新建（重启后保持，支持预览最后对话）
+- ⏱️ 实时进度展示（工具使用、耗时、工具计数）
+- 🔒 用户白名单、频率限制、路径安全、重复实例防护
+- 🧠 Effort level 设置（low/medium/high/max）
+- 🔍 一键 Review 最近修改
+- 🗜️ 手动 Compact 压缩上下文
+- 📡 Push API — 外部脚本推送消息到 Discord 频道
+- 🛡️ Session resume 失败保护（通知 + 手动修复）
 
-- 💰 **No API key** — runs on Claude Code CLI with your Pro or Max subscription
-- 📱 Remote control Claude Code from Discord (desktop/web/mobile)
-- 🔀 Independent sessions per channel (project directory mapping)
-- ✅ Tool use approve/deny via Discord button UI
-- ❓ Interactive question UI (selectable options + custom text input)
-- ⏹️ Stop button for instant cancellation during progress, message queue for sequential tasks
-- 📎 File attachments support (images, documents, code files)
-- 🔄 Session resume/delete/new (persist across bot restarts, last conversation preview)
-- ⏱️ Real-time progress display (tool usage, elapsed time)
-- 🔒 User whitelist, rate limiting, path security, duplicate instance prevention
-- 📊 **Claude Code usage dashboard** in control panel — Session (5hr), Weekly (7day), Weekly Sonnet with progress bars, auto-refresh, click to open usage page
+## 技术栈
 
-## Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| Runtime | Node.js 20+, TypeScript |
+| 类别 | 技术 |
+|------|------|
+| 运行时 | Node.js 20+, TypeScript |
 | Discord | discord.js v14 |
 | AI | @anthropic-ai/claude-agent-sdk |
-| DB | better-sqlite3 (SQLite) |
-| Validation | zod v4 |
-| Build | tsup (ESM) |
-| Test | vitest |
+| 数据库 | better-sqlite3 (SQLite) |
+| 校验 | zod v4 |
+| 构建 | tsup (ESM) |
+| 测试 | vitest |
 
-## Installation
+## 安装
 
 ```bash
-git clone https://github.com/chadingTV/claudecode-discord.git
+git clone https://github.com/x342344-bot/claudecode-discord.git
 cd claudecode-discord
-
-# macOS / Linux
-./install.sh
-
-# Windows
-./install.bat
+npm install
+cp .env.example .env
+# 编辑 .env 填入配置
+npm run build
+npm start
 ```
 
-### Setup Guides
+### 环境变量
 
-| Platform | Guide |
-|----------|-------|
-| **macOS / Linux** | **[SETUP.md](SETUP.md)** — terminal-based setup, menu bar / tray app |
-|  **Windows** | **[SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md)** — GUI installer, system tray app with control panel, desktop shortcut |
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `DISCORD_BOT_TOKEN` | ✅ | Discord bot token |
+| `DISCORD_GUILD_ID` | ✅ | Discord server ID |
+| `ALLOWED_USER_IDS` | ✅ | 允许使用的用户 ID（逗号分隔） |
+| `BASE_PROJECT_DIR` | ✅ | 项目根目录（`/register` 在此目录下查找子目录） |
+| `RATE_LIMIT_PER_MINUTE` | | 每分钟请求限制（默认 10） |
+| `SHOW_COST` | | 显示费用（默认 true，Max plan 建议 false） |
+| `CHANNEL_MAPPINGS` | | 启动时自动注册频道映射（JSON） |
+| `API_PORT` | | Push API 端口（默认 18801） |
+| `API_SECRET` | | Push API 密钥（可选） |
 
-Windows users: `install.bat` handles everything automatically — installs dependencies, builds, creates a desktop shortcut, and launches the bot with a system tray GUI.
+## 使用
+
+| 命令 | 说明 |
+|------|------|
+| `/register <folder>` | 将当前频道关联到项目目录 |
+| `/unregister` | 取消关联 |
+| `/status` | 查看 session 状态 |
+| `/stop` | 停止当前 session |
+| `/auto-approve on\|off` | 切换自动审批模式 |
+| `/sessions` | 列出可恢复/删除的 session |
+| `/effort <level>` | 设置思考深度（low/medium/high/max/auto） |
+| `/review` | Review 当前 session 的修改 |
+| `/compact` | 压缩 session 上下文 |
+| `/last` | 显示最后一条 Claude 回复 |
+| `/usage` | 查看 Claude Code 用量 |
+| `/queue list\|clear` | 查看/清空消息队列 |
+| `/clear-sessions` | 删除项目所有 session 文件 |
+
+`/register` 支持自动补全 — 输入时显示 `BASE_PROJECT_DIR` 下的子目录列表。
+
+在已注册的频道发送**普通消息**，Claude 就会回复。附加图片、文档或代码文件，Claude 可以读取和分析。
+
+### 进行中控制
+
+- **⏹️ Stop** 按钮即时取消
+- 忙碌时发新消息会提示加入**消息队列** — 当前任务完成后自动处理
+- `/queue list` 查看队列，可单独取消或全部取消
+
+### Push API
+
+外部脚本可通过 HTTP 推送消息到 Discord 频道：
+
+```bash
+curl -X POST http://127.0.0.1:18801/api/push \
+  -H "Content-Type: application/json" \
+  -d '{"channel": "daily", "content": "Hello from cron!"}'
+```
+
+支持按频道名或频道 ID 查找。
 
 <details>
-<summary><strong>Project Structure</strong></summary>
+<summary><strong>架构</strong></summary>
 
 ```
-claudecode-discord/
-├── install.sh / install.bat    # Auto-installers
-├── mac-start.sh                # macOS background launcher + menu bar
-├── linux-start.sh              # Linux background launcher + system tray
-├── win-start.bat               # Windows background launcher + system tray
-├── menubar/                    # macOS menu bar app (Swift)
-├── tray/                       # System tray app (Linux: Python, Windows: C#)
-├── src/
-│   ├── index.ts                # Entry point
-│   ├── bot/
-│   │   ├── client.ts           # Discord bot init & events
-│   │   ├── commands/           # Slash commands (10)
-│   │   └── handlers/           # Message & interaction handlers
-│   ├── claude/
-│   │   ├── session-manager.ts  # Session lifecycle
-│   │   └── output-formatter.ts # Discord output formatting
-│   ├── db/                     # SQLite (better-sqlite3)
-│   ├── security/               # Auth, rate limit, path validation
-│   └── utils/                  # Config (zod)
-├── SETUP.md                    # macOS/Linux setup guide
-├── docs/                       # Translations, screenshots
-└── package.json
+[Discord] ←→ [Discord Bot (discord.js v14)] ←→ [Session Manager] ←→ [Claude Agent SDK]
+                        ↕                              ↕
+                   [SQLite DB]                   [Push API :18801]
 ```
+
+- 每个频道独立 session（项目目录映射）
+- Claude Agent SDK 以子进程运行 Claude Code（共享现有登录）
+- 工具调用通过 Discord 按钮审批（支持自动审批模式）
+- 流式响应每 1.5s 编辑到 Discord 消息
+- 文本输出前每 15s heartbeat 显示进度
+- Markdown 代码块跨消息分割时保持完整
+- Session resume 失败时通知用户并提供修复选项
+
+**Session 状态：** 🟢 工作中 · 🟡 等待审批 · ⚪ 空闲 · 🔴 离线
 
 </details>
 
-## Usage
+## 安全
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/register <folder>` | Link current channel to a project | `/register my-project` |
-| `/unregister` | Unlink channel | |
-| `/status` | Check all session statuses | |
-| `/stop` | Stop current channel's session | |
-| `/auto-approve on\|off` | Toggle auto-approval | `/auto-approve on` |
-| `/sessions` | List sessions to resume or delete | |
-| `/last` | Show the last Claude response from current session | |
-| `/usage` | Show Claude Code usage (Session 5hr / Weekly / Sonnet) | |
-| `/queue list` | View queued messages (cancel individually or all) | |
-| `/queue clear` | Cancel all queued messages | |
-| `/clear-sessions` | Delete all session files for the project | |
+### 零外部攻击面
 
-The `/register` command shows an **autocomplete dropdown** listing subdirectories under `BASE_PROJECT_DIR` — just start typing to filter and select.
-The first option `.` registers the base directory itself. You can also type a custom path; absolute paths work too.
+Bot **不开放任何 HTTP 服务器或端口**（Push API 仅监听 127.0.0.1）。通过出站 WebSocket 连接 Discord — 没有入站监听器，外部攻击者无法触达。
 
-> **Why per-directory?** Claude Code manages sessions per project directory — each directory has its own conversation history, `CLAUDE.md` context, and tool permissions. By mapping one Discord channel to one directory, each channel gets an independent Claude workspace.
+### 自托管架构
 
-Send a **regular message** in a registered channel and Claude will respond.
-Attach images, documents, or code files and Claude can read and analyze them.
+Bot 完全运行在你自己的机器上。不涉及外部服务器，除了 Discord 和 Anthropic API（使用你自己的 Claude Code 登录 session）外不会泄露数据。
 
-### In-Progress Controls
+### 访问控制
 
-- **⏹️ Stop** button on progress messages for instant cancellation
-- Sending a new message while busy offers **message queue** — auto-processes after current task completes
-- `/queue list` to view queued messages — cancel individually (❌) or all at once
-- `/stop` slash command also available
+- `ALLOWED_USER_IDS` 白名单认证 — 未授权用户的所有消息和命令被忽略
+- Discord server 默认私有（无邀请链接无法访问）
+- 每分钟请求频率限制
 
-<details>
-<summary><strong>Architecture</strong></summary>
+### 执行保护
 
-```
-[Mobile Discord] ←→ [Discord Bot] ←→ [Session Manager] ←→ [Claude Agent SDK]
-                          ↕
-                     [SQLite DB]
-```
+- 工具调用默认：文件修改、命令执行等**每次需用户审批**（Discord 按钮）
+- 路径穿越（`..`）拦截
+- 文件附件：可执行文件（.exe, .bat 等）拦截，25MB 大小限制
 
-- Independent sessions per channel (project directory mapping)
-- Claude Agent SDK runs Claude Code as subprocess (shares existing auth)
-- Tool use approval via Discord buttons (auto-approve mode supported)
-- Streaming responses edited every 1.5s into Discord messages
-- Heartbeat progress display every 15s until text output begins
-- Markdown code blocks preserved across message splits
-
-**Session States:** 🟢 working · 🟡 waiting for approval · ⚪ idle · 🔴 offline
-
-</details>
-
-## Security
-
-### Zero External Attack Surface
-
-This bot **does not open any HTTP servers, ports, or API endpoints.** It connects to Discord via an outbound WebSocket — there is no inbound listener, so there is no network path for external attackers to reach this bot.
-
-```
-Typical web server:  External → [Port open, waiting] → Receives requests  (inbound)
-This bot:            Bot → [Connects to Discord] → Receives events         (outbound only)
-```
-
-### Self-Hosted Architecture
-
-The bot runs entirely on your own PC/server. No external servers involved, and no data leaves your machine except through Discord and the Anthropic API (which uses your own Claude Code login session).
-
-### Access Control
-
-- `ALLOWED_USER_IDS` whitelist-based authentication — all messages and commands from unregistered users are ignored
-- Discord servers are private by default (no access without invite link)
-- Per-minute request rate limiting
-
-### Execution Protection
-
-- Tool use default: file modifications, command execution, etc. **require user approval each time** (Discord buttons)
-- Path traversal (`..`) blocked
-- File attachments: executable files (.exe, .bat, etc.) blocked, 25MB size limit
-
-### Precautions
-
-- The `.env` file contains your bot token — **never share it publicly.** If compromised, immediately Reset Token in Discord Developer Portal
-- `auto-approve` mode is convenient but may allow Claude to perform unintended actions — use only on trusted projects
-
-## Quick Start by Platform
-
-Each platform runs the bot as a background service with a native GUI for control — no terminal babysitting needed.
-
-### macOS — Menu Bar App
-
-<p align="center">
-  <img src="docs/mac-tray.png" alt="macOS Control Panel" width="400">
-</p>
+## 开发
 
 ```bash
-./mac-start.sh          # Start (background + menu bar icon)
-./mac-start.sh --stop   # Stop
+npm run dev          # 开发模式（tsx）
+npm run build        # 生产构建（tsup）
+npm start            # 运行构建产物
+npm test             # 测试（vitest）
+npm run test:watch   # 测试 watch 模式
 ```
 
-Control panel GUI (left-click icon), **Claude Code usage dashboard** (Session 5hr / Weekly / Sonnet, click to open usage page), settings dialog, auto-update, auto-restart on crash, auto-start on boot (launchd). → **[Full guide](SETUP.md)**
+## 致谢
 
-### Linux — System Tray + Control Panel
-
-<p align="center">
-  <img src="docs/linux-tray.png" alt="Linux System Tray" width="350">
-</p>
-
-```bash
-./linux-start.sh          # Start (systemd + tray icon)
-./linux-start.sh --stop   # Stop
-```
-
-GTK3 **control panel** (left-click tray icon), **Claude Code usage dashboard**, settings dialog, auto-restart, auto-start on boot (systemd). Works headless too. → **[Full guide](SETUP.md)**
-
-### Windows — System Tray + Control Panel
-
-<p align="center">
-  <img src="docs/windows-tray.png" alt="Windows Control Panel" width="400">
-</p>
-
-```batch
-win-start.bat          &:: Start (background + tray + control panel)
-win-start.bat --stop   &:: Stop
-```
-
-Desktop shortcut, control panel GUI, **Claude Code usage dashboard**, settings dialog, auto-update, auto-start on logon (Registry). → **[Full guide](docs/SETUP-WINDOWS.md)**
-
-## Development
-
-```bash
-npm run dev          # Dev mode (tsx)
-npm run build        # Production build (tsup)
-npm start            # Run built files
-npm test             # Tests (vitest)
-npm run test:watch   # Test watch mode
-```
+Fork 自 [chadingTV/claudecode-discord](https://github.com/chadingTV/claudecode-discord)，在此基础上做了中文化、安全加固和功能扩展。
 
 ## License
 
-[MIT License](LICENSE) - Free to use, modify, and distribute commercially. Attribution required: include the original copyright notice and link to [this repository](https://github.com/chadingTV/claudecode-discord).
-
----
-
-If you find this project useful, please consider giving it a ⭐ — it helps others discover it!
+[MIT License](LICENSE)
