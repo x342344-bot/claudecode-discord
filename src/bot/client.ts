@@ -27,8 +27,9 @@ import * as usageCmd from "./commands/usage.js";
 import * as compactCmd from "./commands/compact.js";
 import * as effortCmd from "./commands/effort.js";
 import * as reviewCmd from "./commands/review.js";
+import * as gptReviewCmd from "./commands/gpt-review.js";
 
-const commands = [registerCmd, unregisterCmd, statusCmd, stopCmd, autoApproveCmd, sessionsCmd, clearSessionsCmd, lastCmd, queueCmd, usageCmd, compactCmd, effortCmd, reviewCmd];
+const commands = [registerCmd, unregisterCmd, statusCmd, stopCmd, autoApproveCmd, sessionsCmd, clearSessionsCmd, lastCmd, queueCmd, usageCmd, compactCmd, effortCmd, reviewCmd, gptReviewCmd];
 const commandMap = new Collection<
   string,
   { execute: (interaction: ChatInputCommandInteraction) => Promise<void> }

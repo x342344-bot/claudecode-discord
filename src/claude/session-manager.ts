@@ -349,8 +349,9 @@ class SessionManager {
               // Send additional chunks as new messages
               for (let i = 1; i < chunks.length; i++) {
                 currentMessage = await channel.send(chunks[i]);
-                responseBuffer = chunks.slice(i + 1).join("");
               }
+              // Keep last chunk in buffer so next edit appends to currentMessage cleanly
+              responseBuffer = chunks[chunks.length - 1] ?? "";
             } catch (e) {
               console.warn(`[stream] Failed to edit message for ${channelId}, sending new:`, e instanceof Error ? e.message : e);
               currentMessage = await channel.send(
