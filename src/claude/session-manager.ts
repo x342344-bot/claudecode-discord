@@ -25,6 +25,9 @@ interface ActiveSession {
   channelId: string;
   sessionId: string | null; // Claude Agent SDK session ID
   dbId: string;
+  abortController: AbortController;
+  heartbeat: NodeJS.Timeout | null;
+  stopped: boolean;
 }
 
 // Pending approval requests: requestId -> resolve function
@@ -87,6 +90,7 @@ class SessionManager {
     let toolUseCount = 0;
     let hasTextOutput = false;
     let hasResult = false;
+    let buttonFinalized = false;
 
     // Heartbeat timer - updates status message every 15s when no text output yet
     const heartbeatInterval = setInterval(async () => {
@@ -108,6 +112,9 @@ class SessionManager {
     // Track whether we're using resume (may fallback to new session)
     let activeResumeId = resumeSessionId;
 
+    // AbortController for clean cancellation via /stop
+    const abortController = new AbortController();
+
     try {
       const createQueryInstance = (useResume: string | undefined) => {
         console.log(`[session] Creating query: cwd=${project.project_path}, resume=${useResume ?? "NEW"}, effort=${project.effort ?? "default"}`);
@@ -116,6 +123,7 @@ class SessionManager {
           options: {
             cwd: project.project_path,
             permissionMode: "bypassPermissions",
+            abortController,
             ...(project.effort ? { effort: project.effort } : {}),
             env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
             ...(useResume ? { resume: useResume } : {}),
@@ -124,6 +132,10 @@ class SessionManager {
             toolName: string,
             input: Record<string, unknown>,
           ) => {
+            // Abort guard: if /stop fired, deny silently without sending UI or touching state
+            if (abortController.signal.aborted) {
+              return { behavior: "deny" as const, message: "Session stopped" };
+            }
             toolUseCount++;
 
             // Tool activity labels for Discord display
@@ -203,6 +215,10 @@ class SessionManager {
                 });
 
                 if (answer === null) {
+                  // Distinguish stop from timeout
+                  if (abortController.signal.aborted) {
+                    return { behavior: "deny" as const, message: "Session stopped" };
+                  }
                   updateSessionStatus(channelId, "online");
                   return {
                     behavior: "deny" as const,
@@ -213,7 +229,9 @@ class SessionManager {
                 answers[q.header] = answer;
               }
 
-              updateSessionStatus(channelId, "online");
+              if (!abortController.signal.aborted) {
+                updateSessionStatus(channelId, "online");
+              }
               return {
                 behavior: "allow" as const,
                 updatedInput: { ...input, answers },
@@ -250,7 +268,9 @@ class SessionManager {
             return new Promise((resolve) => {
               const timeout = setTimeout(() => {
                 pendingApprovals.delete(requestId);
-                updateSessionStatus(channelId, "online");
+                if (!abortController.signal.aborted) {
+                  updateSessionStatus(channelId, "online");
+                }
                 resolve({ behavior: "deny" as const, message: "Approval timed out" });
               }, 5 * 60 * 1000);
 
@@ -258,7 +278,10 @@ class SessionManager {
                 resolve: (decision) => {
                   clearTimeout(timeout);
                   pendingApprovals.delete(requestId);
-                  updateSessionStatus(channelId, "online");
+                  // Don't write online if /stop already set offline
+                  if (!abortController.signal.aborted) {
+                    updateSessionStatus(channelId, "online");
+                  }
                   resolve(
                     decision.behavior === "allow"
                       ? { behavior: "allow" as const, updatedInput: input }
@@ -281,6 +304,9 @@ class SessionManager {
         channelId,
         sessionId: activeResumeId ?? null,
         dbId,
+        abortController,
+        heartbeat: heartbeatInterval,
+        stopped: false,
       });
 
       // Try to start stream; if resume fails, fallback to new session with notification
@@ -313,6 +339,10 @@ class SessionManager {
       }
 
       for await (const message of messageStream) {
+        // Abort guard: skip all message processing if /stop fired
+        if (abortController.signal.aborted) {
+          continue;
+        }
         // Capture session ID
         if (
           message.type === "system" &&
@@ -369,6 +399,17 @@ class SessionManager {
             duration_ms?: number;
           };
 
+          // If aborted via /stop, mark hasResult to suppress catch-block errors and exit silently
+          // Don't touch session status — stopSession already set it to offline
+          if (abortController.signal.aborted) {
+            hasResult = true;
+            try {
+              await currentMessage.edit({ components: [createCompletedButton()] });
+              buttonFinalized = true;
+            } catch {}
+            return;
+          }
+
           // Flush remaining buffer
           if (responseBuffer.length > 0) {
             const chunks = splitMessage(responseBuffer);
@@ -387,6 +428,7 @@ class SessionManager {
             await currentMessage.edit({
               components: [createCompletedButton()],
             });
+            buttonFinalized = true;
           } catch (e) {
             console.warn(`[complete] Failed to update completed button for ${channelId}:`, e instanceof Error ? e.message : e);
           }
@@ -418,6 +460,13 @@ class SessionManager {
       // Skip error if result was already delivered (e.g., "Credit balance is too low" + exit code 1)
       if (hasResult) {
         console.warn(`[session] Ignoring post-result error for ${channelId}:`, error instanceof Error ? error.message : error);
+        return;
+      }
+      // /stop triggered abort — silent exit, no error message
+      const errName = error instanceof Error ? error.name : "";
+      const rawMsgEarly = error instanceof Error ? error.message : String(error);
+      if (abortController.signal.aborted || errName === "AbortError" || /aborted|abort/i.test(rawMsgEarly)) {
+        console.log(`[session] Aborted by /stop for ${channelId}`);
         return;
       }
       const rawMsg =
@@ -455,19 +504,31 @@ class SessionManager {
       updateSessionStatus(channelId, "offline");
     } finally {
       clearInterval(heartbeatInterval);
-      this.sessions.delete(channelId);
-
-      // Clean up any pending approvals/questions for this channel
-      for (const [id, entry] of pendingApprovals) {
-        if (entry.channelId === channelId) pendingApprovals.delete(id);
+      // Belt-and-suspenders: ensure stop button is replaced no matter how we exit
+      if (!buttonFinalized) {
+        try {
+          await currentMessage.edit({ components: [createCompletedButton()] });
+        } catch (e) {
+          console.warn(`[finally] Failed to finalize button for ${channelId}:`, e instanceof Error ? e.message : e);
+        }
       }
-      for (const [id, entry] of pendingQuestions) {
-        if (entry.channelId === channelId) pendingQuestions.delete(id);
+      // Only clean up if this run is still the current one (avoid clobbering a newer session started after /stop)
+      const cur = this.sessions.get(channelId);
+      const isCurrentRun = cur?.abortController === abortController;
+      if (isCurrentRun) {
+        this.sessions.delete(channelId);
+        // Clean up any pending approvals/questions for this channel
+        for (const [id, entry] of pendingApprovals) {
+          if (entry.channelId === channelId) pendingApprovals.delete(id);
+        }
+        for (const [id, entry] of pendingQuestions) {
+          if (entry.channelId === channelId) pendingQuestions.delete(id);
+        }
+        pendingCustomInputs.delete(channelId);
       }
-      pendingCustomInputs.delete(channelId);
 
-      // Process next queued message if any
-      const queue = this.messageQueue.get(channelId);
+      // Process next queued message if any (skip if a newer run already took over)
+      const queue = isCurrentRun ? this.messageQueue.get(channelId) : undefined;
       if (queue && queue.length > 0) {
         const next = queue.shift()!;
         if (queue.length === 0) this.messageQueue.delete(channelId);
@@ -488,22 +549,44 @@ class SessionManager {
     const session = this.sessions.get(channelId);
     if (!session) return false;
 
-    try {
-      await session.queryInstance.interrupt();
-    } catch {
-      // already stopped
+    // Mark stopped + clear heartbeat synchronously
+    session.stopped = true;
+    if (session.heartbeat) {
+      clearInterval(session.heartbeat);
+      session.heartbeat = null;
     }
 
+    // Abort the SDK query (synchronous, doesn't wait for SDK to actually finish)
+    try {
+      session.abortController.abort();
+    } catch (e) {
+      console.warn(`[stop] abort() threw for ${channelId}:`, e instanceof Error ? e.message : e);
+    }
+
+    // Best-effort interrupt() in background (don't await — it may hang)
+    session.queryInstance.interrupt().catch(() => {});
+
+    // Remove from in-memory map immediately so new messages can start a fresh session
     this.sessions.delete(channelId);
 
-    // Clean up any pending approvals/questions for this channel
+    // Actively resolve any pending approval/question Promises so awaiting code paths exit
     for (const [id, entry] of pendingApprovals) {
-      if (entry.channelId === channelId) pendingApprovals.delete(id);
+      if (entry.channelId === channelId) {
+        try { entry.resolve({ behavior: "deny", message: "Session stopped" }); } catch {}
+        pendingApprovals.delete(id);
+      }
     }
     for (const [id, entry] of pendingQuestions) {
-      if (entry.channelId === channelId) pendingQuestions.delete(id);
+      if (entry.channelId === channelId) {
+        try { entry.resolve(null); } catch {}
+        pendingQuestions.delete(id);
+      }
     }
     pendingCustomInputs.delete(channelId);
+
+    // Clear any queued messages — user explicitly stopped, don't auto-run them
+    this.messageQueue.delete(channelId);
+    this.pendingQueuePrompts.delete(channelId);
 
     updateSessionStatus(channelId, "offline");
     return true;
