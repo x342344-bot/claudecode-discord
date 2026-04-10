@@ -122,6 +122,7 @@ class SessionManager {
           prompt,
           options: {
             cwd: project.project_path,
+            model: "claude-opus-4-6",
             permissionMode: "bypassPermissions",
             abortController,
             ...(project.effort ? { effort: project.effort } : {}),
