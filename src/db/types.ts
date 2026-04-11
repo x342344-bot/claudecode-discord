@@ -19,3 +19,15 @@ export interface Session {
   last_activity: string | null;
   created_at: string;
 }
+
+export interface MessageLog {
+  id: number;
+  channel_id: string;
+  user_id: string;
+  content: string;
+  has_attachments: number;
+  source: string;
+  discord_message_id: string | null;
+  message_ts: number | null;
+  created_at: string;
+}

@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import path from "node:path";
-import type { EffortLevel, Project, Session, SessionStatus } from "./types.js";
+import type { EffortLevel, MessageLog, Project, Session, SessionStatus } from "./types.js";
 
 const DB_PATH = path.join(process.cwd(), "data.db");
 
@@ -20,6 +20,19 @@ export function initDatabase(): void {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS message_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      has_attachments INTEGER DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'normal',
+      discord_message_id TEXT,
+      message_ts INTEGER,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_message_logs_created ON message_logs(created_at);
+
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       channel_id TEXT REFERENCES projects(channel_id) ON DELETE CASCADE,
@@ -34,6 +47,14 @@ export function initDatabase(): void {
   const columns = db.pragma("table_info(projects)") as { name: string }[];
   if (!columns.some((c) => c.name === "effort")) {
     db.exec("ALTER TABLE projects ADD COLUMN effort TEXT DEFAULT NULL");
+  }
+
+  // Migration: add new columns to message_logs if not exists
+  const mlColumns = db.pragma("table_info(message_logs)") as { name: string }[];
+  if (mlColumns.length > 0 && !mlColumns.some((c) => c.name === "source")) {
+    db.exec("ALTER TABLE message_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'normal'");
+    db.exec("ALTER TABLE message_logs ADD COLUMN discord_message_id TEXT");
+    db.exec("ALTER TABLE message_logs ADD COLUMN message_ts INTEGER");
   }
 }
 
@@ -120,6 +141,36 @@ export function updateSessionStatus(
   db.prepare(
     "UPDATE sessions SET status = ?, last_activity = datetime('now') WHERE channel_id = ?",
   ).run(status, channelId);
+}
+
+// Message logging
+export function logMessage(
+  channelId: string,
+  userId: string,
+  content: string,
+  hasAttachments: boolean,
+  source: "normal" | "ask_question" = "normal",
+  discordMessageId?: string,
+  messageTs?: number,
+): void {
+  try {
+    db.prepare(
+      "INSERT INTO message_logs (channel_id, user_id, content, has_attachments, source, discord_message_id, message_ts) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(channelId, userId, content, hasAttachments ? 1 : 0, source, discordMessageId ?? null, messageTs ?? null);
+  } catch (e) {
+    console.warn("[journal] Failed to log message:", e instanceof Error ? e.message : e);
+  }
+}
+
+export function getMessageLogs(since: string, until?: string): MessageLog[] {
+  if (until) {
+    return db.prepare(
+      "SELECT * FROM message_logs WHERE created_at >= ? AND created_at < ? ORDER BY created_at",
+    ).all(since, until) as MessageLog[];
+  }
+  return db.prepare(
+    "SELECT * FROM message_logs WHERE created_at >= ? ORDER BY created_at",
+  ).all(since) as MessageLog[];
 }
 
 export function getAllSessions(guildId: string): (Session & { project_path: string })[] {

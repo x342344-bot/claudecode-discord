@@ -1,5 +1,5 @@
 import { Message, TextChannel, Attachment, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { getProject } from "../../db/database.js";
+import { getProject, logMessage } from "../../db/database.js";
 import { isAllowedUser, checkRateLimit } from "../../security/guard.js";
 import { sessionManager } from "../../claude/session-manager.js";
 import fs from "node:fs";
@@ -40,7 +40,7 @@ async function downloadAttachment(
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const fileName = `${Date.now()}-${attachment.name}`;
+  const fileName = `${Date.now()}-${path.basename(attachment.name ?? "file")}`;
   const filePath = path.join(uploadDir, fileName);
 
   try {
@@ -88,6 +88,7 @@ export async function handleMessage(message: Message): Promise<void> {
   if (sessionManager.hasPendingCustomInput(message.channelId)) {
     const text = message.content.trim();
     if (text) {
+      logMessage(message.channelId, message.author.id, text, false, "ask_question", message.id, message.createdTimestamp);
       sessionManager.resolveCustomInput(message.channelId, text);
       await message.react("✅");
     }
@@ -95,6 +96,9 @@ export async function handleMessage(message: Message): Promise<void> {
   }
 
   let prompt = message.content.trim();
+
+  // Log user message for prompt journal analysis
+  logMessage(message.channelId, message.author.id, prompt, message.attachments.size > 0, "normal", message.id, message.createdTimestamp);
 
   // Download attachments (images, documents, code files, etc.)
   const imagePaths: string[] = [];
