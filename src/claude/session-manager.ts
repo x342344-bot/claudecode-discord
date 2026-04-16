@@ -56,12 +56,59 @@ class SessionManager {
   private static readonly MAX_QUEUE_SIZE = 5;
   private messageQueue = new Map<string, { channel: TextChannel; prompt: string }[]>();
   private pendingQueuePrompts = new Map<string, { channel: TextChannel; prompt: string }>();
+  private journalTimers = new Map<string, NodeJS.Timeout>();
+  private static readonly JOURNAL_IDLE_MS = 60 * 60 * 1000; // 1 hour
+
+  private startJournalTimer(channelId: string, channel: TextChannel): void {
+    this.clearJournalTimer(channelId);
+
+    const timer = setTimeout(async () => {
+      this.journalTimers.delete(channelId);
+
+      // Don't trigger if session is currently active
+      if (this.sessions.has(channelId)) return;
+
+      const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+      const journalPath = `/Users/xudong/projects/cortex/0-journal/${today}.md`;
+
+      const journalPrompt = `[自动触发 - 写日记] 过去的对话已空闲超过 1 小时。请回顾本次对话内容，将值得记录的关键信息追加写入 ${journalPath}。
+
+记录什么：项目进展、决定、认知沉淀、偏好变更。
+不记什么：一次性问答、调试过程、纯闲聊、重复之前已记录的内容。
+
+如果文件已有内容，追加新 section（用 ## 标题区分）。如有重要认知沉淀，同时更新 /Users/xudong/projects/cortex/.claude/rules/memory.md。
+写完后简要说明记了什么（一两句话即可）。如果本次对话没有值得记录的内容，直接说"无需记录"即可，不要强行编造。`;
+
+      console.log(`[journal] Auto-journal triggered for ${channelId}`);
+      try {
+        await this.sendMessage(channel, journalPrompt, true);
+      } catch (e) {
+        console.warn(`[journal] Failed to send journal prompt for ${channelId}:`, e instanceof Error ? e.message : e);
+      }
+    }, SessionManager.JOURNAL_IDLE_MS);
+
+    this.journalTimers.set(channelId, timer);
+    console.log(`[journal] Timer started for ${channelId} (1h)`);
+  }
+
+  private clearJournalTimer(channelId: string): void {
+    const timer = this.journalTimers.get(channelId);
+    if (timer) {
+      clearTimeout(timer);
+      this.journalTimers.delete(channelId);
+    }
+  }
 
   async sendMessage(
     channel: TextChannel,
     prompt: string,
+    isJournal = false,
   ): Promise<void> {
     const channelId = channel.id;
+
+    // Clear journal timer on new activity
+    this.clearJournalTimer(channelId);
+
     const project = getProject(channelId);
     if (!project) return;
 
@@ -242,6 +289,11 @@ class SessionManager {
             // Auto-approve read-only tools
             const readOnlyTools = ["Read", "Glob", "Grep", "WebSearch", "WebFetch", "TodoWrite"];
             if (readOnlyTools.includes(toolName)) {
+              return { behavior: "allow" as const, updatedInput: input };
+            }
+
+            // Journal runs bypass approval (auto-triggered background task)
+            if (isJournal) {
               return { behavior: "allow" as const, updatedInput: input };
             }
 
@@ -542,11 +594,17 @@ class SessionManager {
         this.sendMessage(next.channel, next.prompt).catch((err) => {
           console.error("Queue sendMessage error:", err);
         });
+      } else if (!isJournal && isCurrentRun) {
+        // Start journal timer: auto-write journal after 1h idle
+        this.startJournalTimer(channelId, channel);
       }
     }
   }
 
   async stopSession(channelId: string): Promise<boolean> {
+    // Clear journal timer on stop
+    this.clearJournalTimer(channelId);
+
     const session = this.sessions.get(channelId);
     if (!session) return false;
 
@@ -646,12 +704,14 @@ class SessionManager {
   // --- Message queue ---
 
   setPendingQueue(channelId: string, channel: TextChannel, prompt: string): void {
+    this.clearJournalTimer(channelId); // New activity — cancel journal
     this.pendingQueuePrompts.set(channelId, { channel, prompt });
   }
 
   confirmQueue(channelId: string): boolean {
     const pending = this.pendingQueuePrompts.get(channelId);
     if (!pending) return false;
+    this.clearJournalTimer(channelId); // Queue confirmed — cancel journal
     this.pendingQueuePrompts.delete(channelId);
     const queue = this.messageQueue.get(channelId) ?? [];
     queue.push(pending);
