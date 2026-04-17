@@ -172,7 +172,7 @@ class SessionManager {
             model: "claude-opus-4-6",
             permissionMode: "bypassPermissions",
             abortController,
-            ...(project.effort ? { effort: project.effort } : {}),
+            effort: project.effort || "max",
             env: { ...process.env, ANTHROPIC_API_KEY: undefined, PATH: `${path.dirname(process.execPath)}:${process.env.PATH ?? ""}` },
             ...(useResume ? { resume: useResume } : {}),
 

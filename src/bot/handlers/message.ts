@@ -1,4 +1,4 @@
-import { Message, TextChannel, Attachment, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { Message, TextChannel, Attachment } from "discord.js";
 import { getProject, logMessage } from "../../db/database.js";
 import { isAllowedUser, checkRateLimit } from "../../security/guard.js";
 import { sessionManager } from "../../claude/session-manager.js";
@@ -134,36 +134,17 @@ export async function handleMessage(message: Message): Promise<void> {
 
   const channel = message.channel as TextChannel;
 
-  // If session is active, offer to queue the message
+  // If session is active, auto-queue the message
   if (sessionManager.isActive(message.channelId)) {
-    if (sessionManager.hasQueue(message.channelId)) {
-      await message.reply("⏳ 已有消息等待加入队列，请先处理。");
-      return;
-    }
     if (sessionManager.isQueueFull(message.channelId)) {
       await message.reply("⏳ 队列已满（最多 5 条），请等待当前任务完成。");
       return;
     }
 
     sessionManager.setPendingQueue(message.channelId, channel, prompt);
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`queue-yes:${message.channelId}`)
-        .setLabel("加入队列")
-        .setStyle(ButtonStyle.Success)
-        .setEmoji("✅"),
-      new ButtonBuilder()
-        .setCustomId(`queue-no:${message.channelId}`)
-        .setLabel("取消")
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji("❌"),
-    );
-
-    await message.reply({
-      content: "⏳ 上一个任务进行中，完成后自动处理？",
-      components: [row],
-    });
+    sessionManager.confirmQueue(message.channelId);
+    const queueSize = sessionManager.getQueueSize(message.channelId);
+    await message.react("📨");
     return;
   }
 
