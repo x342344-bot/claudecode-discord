@@ -15,6 +15,8 @@ const envSchema = z.object({
     .transform((v) => v === "true"),
   API_PORT: z.coerce.number().int().positive().default(18801),
   API_SECRET: z.string().optional().default(""),
+  JOURNAL_DIR: z.string().optional().default(""),
+  MEMORY_FILE: z.string().optional().default(""),
   CHANNEL_MAPPINGS: z
     .string()
     .optional()

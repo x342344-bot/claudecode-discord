@@ -60,6 +60,9 @@ class SessionManager {
   private static readonly JOURNAL_IDLE_MS = 60 * 60 * 1000; // 1 hour
 
   private startJournalTimer(channelId: string, channel: TextChannel): void {
+    const config = getConfig();
+    if (!config.JOURNAL_DIR) return; // Auto-journal disabled if JOURNAL_DIR not set
+
     this.clearJournalTimer(channelId);
 
     const timer = setTimeout(async () => {
@@ -69,15 +72,20 @@ class SessionManager {
       if (this.sessions.has(channelId)) return;
 
       const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-      const journalPath = `/Users/xudong/projects/cortex/0-journal/${today}.md`;
+      const journalPath = path.join(config.JOURNAL_DIR, `${today}.md`);
 
-      const journalPrompt = `[自动触发 - 写日记] 过去的对话已空闲超过 1 小时。请回顾本次对话内容，将值得记录的关键信息追加写入 ${journalPath}。
+      let journalPrompt = `[自动触发 - 写日记] 过去的对话已空闲超过 1 小时。请回顾本次对话内容，将值得记录的关键信息追加写入 ${journalPath}。
 
 记录什么：项目进展、决定、认知沉淀、偏好变更。
 不记什么：一次性问答、调试过程、纯闲聊、重复之前已记录的内容。
 
-如果文件已有内容，追加新 section（用 ## 标题区分）。如有重要认知沉淀，同时更新 /Users/xudong/projects/cortex/.claude/rules/memory.md。
-写完后简要说明记了什么（一两句话即可）。如果本次对话没有值得记录的内容，直接说"无需记录"即可，不要强行编造。`;
+如果文件已有内容，追加新 section（用 ## 标题区分）。
+`;
+      if (config.MEMORY_FILE) {
+        journalPrompt += `如有重要认知沉淀，同时更新 ${config.MEMORY_FILE}。
+`;
+      }
+      journalPrompt += `写完后简要说明记了什么（一两句话即可）。如果本次对话没有值得记录的内容，直接说"无需记录"即可，不要强行编造。`;
 
       console.log(`[journal] Auto-journal triggered for ${channelId}`);
       try {
