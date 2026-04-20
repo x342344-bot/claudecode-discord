@@ -74,18 +74,10 @@ class SessionManager {
       const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
       const journalPath = path.join(config.JOURNAL_DIR, `${today}.md`);
 
-      let journalPrompt = `[自动触发 - 写日记] 过去的对话已空闲超过 1 小时。请回顾本次对话内容，将值得记录的关键信息追加写入 ${journalPath}。
-
-记录什么：项目进展、决定、认知沉淀、偏好变更。
-不记什么：一次性问答、调试过程、纯闲聊、重复之前已记录的内容。
-
-如果文件已有内容，追加新 section（用 ## 标题区分）。
-`;
+      let journalPrompt = `[自动触发 - 写日记] 过去的对话已空闲超过 1 小时。先读 ${journalPath} 看今天已记了什么，然后将本次对话中值得记录的关键信息（决定、项目进展、认知沉淀、日程、偏好变更）追加写入。不记一次性问答、调试过程、纯闲聊、已经记过的内容。格式：## 标题 + bullet list，每个话题最多 3-5 行。没有新内容就说"无需记录"，不要强行编造。`;
       if (config.MEMORY_FILE) {
-        journalPrompt += `如有重要认知沉淀，同时更新 ${config.MEMORY_FILE}。
-`;
+        journalPrompt += `如有重要认知沉淀，同时更新 ${config.MEMORY_FILE}。`;
       }
-      journalPrompt += `写完后简要说明记了什么（一两句话即可）。如果本次对话没有值得记录的内容，直接说"无需记录"即可，不要强行编造。`;
 
       console.log(`[journal] Auto-journal triggered for ${channelId}`);
       try {
